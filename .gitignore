@@ -1,0 +1,61 @@
+# Python
+__pycache__/
+*.py[cod]
+*.so
+*.egg
+*.egg-info/
+dist/
+build/
+*.log
+
+# Environments
+.env
+.venv/
+venv/
+ENV/
+env/
+
+# Django specific
+*.sqlite3
+db.sqlite3
+media/
+staticfiles/
+logs/
+*.pot
+*.pyc
+local_settings.py
+
+# VS Code
+.vscode/
+
+# System files
+.DS_Store
+Thumbs.db
+
+# MacOS
+.AppleDouble
+.LSOverride
+
+# Backup files
+*.bak
+*.swp
+*~
+
+# JetBrains (PyCharm)
+.idea/
+
+# Migrations cache (optional)
+*/migrations/__pycache__/
+*/migrations/*.pyc
+
+# Optional: You can exclude migration files
+# Uncomment this if you want to ignore all migration files
+# */migrations/*.py
+
+# PostgreSQL dumps (if you don’t want to track backups)
+*.sql
+
+# Optional: Node.js (if using frontend tools)
+node_modules/
+npm-debug.log
+yarn-error.log
