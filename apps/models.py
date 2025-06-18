@@ -1,7 +1,45 @@
 from django.db import models
+from django.contrib.auth.models import AbstractUser, BaseUserManager
+
+from .utils.custom_validators import validate_phone_number
 
 
+# CustomUser model
+class CustomUserManager(BaseUserManager):
+    def create_user(self, phone, password, **extra_fields):
+        if not phone:
+            raise ValueError("Telefon raqam kiritish shart!")
 
+        if not password:
+            raise ValueError("Parol kiritish shart!")
+
+        user = self.model(phone=phone, **extra_fields)
+        user.set_password(password)
+        user.save()
+        return user
+
+    def create_superuser(self, phone, password, **extra_fields):
+        extra_fields.setdefault('is_staff', True)
+        extra_fields.setdefault('is_superuser', True)
+        return self.create_user(phone=phone, password=password, **extra_fields)
+    
+
+class CustomUser(AbstractUser):
+    username = None
+    first_name = None
+    last_name = None
+    gmail = None
+    
+    full_name = models.CharField(max_length=100)
+    phone = models.CharField(max_length=13, validators=[validate_phone_number], unique=True)
+
+    USERNAME_FIELD = "phone"
+    REQUIRED_FIELDS = ['full_name']
+    
+    objects = CustomUserManager()
+
+    def __str__(self):
+        return self.phone
 
 
 # Camera model
@@ -15,7 +53,7 @@ class Camera(models.Model):
     port = models.IntegerField(default=554)
     username = models.CharField(max_length=50)
     password = models.CharField(max_length=120)
-    type = models.CharField(max_length=3, choices=BARRIER_TYPE, default=BARRIER_TYPE.IN)
+    type = models.CharField(max_length=3, choices=BARRIER_TYPE)
     is_active = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now=True)
 
@@ -48,4 +86,4 @@ class Area(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
-        return self.area_id
+        return str(self.area_id)
