@@ -45,8 +45,8 @@ class CustomUser(AbstractUser):
 # Camera model
 class Camera(models.Model):
     BARRIER_TYPE = [
-        ('IN', 'Entrance'),
-        ('OUT', 'Exit'),
+        ('IN', 'Kiruvchi'),
+        ('OUT', 'Chiquvchi'),
     ]
     name = models.CharField(max_length=100)
     ip_address = models.GenericIPAddressField()
