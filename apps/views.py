@@ -5,7 +5,7 @@ from django.utils.timezone import now
 from rest_framework.settings import api_settings
 
 from .filters import ExitLogFilter
-from .models import Vehicle, EntryLog, ExitLog, FineStatus
+from .models import Vehicle, EntryLog, ExitLog, FineStatus, ExceptionalTransports
 from .serializers import *
 from .services.gai_api import check_with_gai
 from .services.payment import calculate_fee
@@ -18,6 +18,11 @@ from rest_framework_csv import renderers as csv_renderers
 class VehicleViewSet(viewsets.ModelViewSet):
     queryset = Vehicle.objects.all()
     serializer_class = VehicleSerializer
+
+
+class ExceptionalTransportsViewSet(viewsets.ModelViewSet):
+    queryset = ExceptionalTransports.objects.all()
+    serializer_class = ExceptionalTransportsSerializer
 
 
 class EntryLogViewSet(viewsets.ModelViewSet):

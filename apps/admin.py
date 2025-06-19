@@ -3,7 +3,7 @@ from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
 from django.utils.translation import gettext_lazy as _
 from .models import (
     CustomUser, Vehicle, EntryLog, ExitLog,
-    FineStatus, Camera, Area
+    FineStatus, Camera, Area, ExceptionalTransports
 )
 
 
@@ -31,6 +31,13 @@ class CustomUserAdmin(BaseUserAdmin):
 class VehicleAdmin(admin.ModelAdmin):
     list_display = ("id", "plate_number", "owner_name", "is_evacuator", "is_whitelisted")
     search_fields = ("plate_number", "owner_name")
+
+
+@admin.register(ExceptionalTransports)
+class ExceptionalTransportsAdmin(admin.ModelAdmin):
+    list_display = ("id", "plate_number", "owner_name")
+    search_fields = ("plate_number", "owner_name")
+
 
 
 @admin.register(EntryLog)

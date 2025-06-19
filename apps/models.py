@@ -112,3 +112,11 @@ class Area(models.Model):
 
     def __str__(self):
         return str(self.area_id)
+
+
+class ExceptionalTransports(models.Model):
+    plate_number = models.CharField(_("Davlat raqami"), max_length=20, unique=True)
+    owner_name = models.CharField(_("Egasining ismi"), max_length=255, blank=True)
+
+    def __str__(self):
+        return self.plate_number

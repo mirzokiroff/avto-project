@@ -1,6 +1,6 @@
 from rest_framework import serializers
 
-from .models import Vehicle, EntryLog, ExitLog, FineStatus, CustomUser
+from .models import Vehicle, EntryLog, ExitLog, FineStatus, CustomUser, ExceptionalTransports
 
 
 class UserSerializer(serializers.ModelSerializer):
@@ -30,4 +30,10 @@ class ExitLogSerializer(serializers.ModelSerializer):
 class FineStatusSerializer(serializers.ModelSerializer):
     class Meta:
         model = FineStatus
+        fields = '__all__'
+
+
+class ExceptionalTransportsSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ExceptionalTransports
         fields = '__all__'
