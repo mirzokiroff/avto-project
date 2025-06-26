@@ -7,43 +7,48 @@ from apps.utils.validators import validate_phone_number
 from config import settings
 
 
+class TimeStampedModel(models.Model):
+    created_at = models.DateTimeField(_("Yaratilgan vaqti"), auto_now_add=True)
+    updated_at = models.DateTimeField(_("Yangilangan vaqti"), auto_now=True)
+
+    class Meta:
+        abstract = True
+
+
 class CustomUserManager(BaseUserManager):
-    def create_user(self, phone, password=None, **extra_fields):
-        if not phone:
-            raise ValueError("Telefon raqam kiritish shart!")
-        user = self.model(phone=phone, **extra_fields)
+    def create_user(self, username, password=None, **extra_fields):
+        if not username:
+            raise ValueError("Foydalanuvchi nomi kiritilishi kerak!")
+        user = self.model(username=username, **extra_fields)
         user.set_password(password)
         user.save(using=self._db)
         return user
 
-    def create_superuser(self, phone, password, **extra_fields):
+    def create_superuser(self, username, password, **extra_fields):
         extra_fields.setdefault('is_staff', True)
         extra_fields.setdefault('is_superuser', True)
-        return self.create_user(phone, password, **extra_fields)
+        return self.create_user(username, password, **extra_fields)
 
 
-class CustomUser(AbstractUser):
-    username = None
-    first_name = None
-    last_name = None
-    email = None
-
+class CustomUser(AbstractUser, TimeStampedModel):
     full_name = models.CharField(_("To'liq ism"), max_length=100)
-    phone = models.CharField(_("Telefon raqam"), max_length=13, validators=[validate_phone_number], unique=True)
+    phone = models.CharField(_("Telefon raqam"), max_length=13, validators=[validate_phone_number], unique=True,
+                             null=True, blank=True)
 
     is_admin = models.BooleanField(_("Adminmi?"), default=False)
     is_guard = models.BooleanField(_("Qorovulmi?"), default=False)
 
-    USERNAME_FIELD = "phone"
+    # Ushbu qatorni o'zgartiramiz:
+    USERNAME_FIELD = "username"  # username orqali login qilish
     REQUIRED_FIELDS = ["full_name"]
 
     objects = CustomUserManager()
 
     def __str__(self):
-        return self.phone
+        return self.username
 
 
-class Vehicle(models.Model):
+class Vehicle(TimeStampedModel):
     plate_number = models.CharField(_("Davlat raqami"), max_length=20, unique=True)
     owner_name = models.CharField(_("Egasining ismi"), max_length=255, blank=True)
     is_evacuator = models.BooleanField(_("Evakuatormi?"), default=False)
@@ -56,7 +61,7 @@ class Vehicle(models.Model):
         return self.plate_number
 
 
-class Camera(models.Model):
+class Camera(TimeStampedModel):
     BARRIER_TYPE = [
         ('IN', 'Kiruvchi'),
         ('OUT', 'Chiquvchi'),
@@ -74,7 +79,7 @@ class Camera(models.Model):
         return f"{self.name} - {self.type}"
 
 
-class EntryLog(models.Model):
+class EntryLog(TimeStampedModel):
     vehicle = models.ForeignKey("Vehicle", on_delete=models.CASCADE)
     photo = models.ImageField(_("Kirish rasmi"), upload_to='entry_photos/')
     entry_time = models.DateTimeField(_("Kirish vaqti"), default=timezone.now)
@@ -85,7 +90,7 @@ class EntryLog(models.Model):
         return f"{self.vehicle.plate_number} kirgan - {self.entry_time}"
 
 
-class ExitLog(models.Model):
+class ExitLog(TimeStampedModel):
     vehicle = models.ForeignKey("Vehicle", on_delete=models.CASCADE)
     photo = models.ImageField(_("Chiqish rasmi"), upload_to='exit_photos/')
     exit_time = models.DateTimeField(_("Chiqish vaqti"), default=timezone.now)
@@ -97,7 +102,7 @@ class ExitLog(models.Model):
         return f"{self.vehicle.plate_number} chiqqan - {self.exit_time}"
 
 
-class FineStatus(models.Model):
+class FineStatus(TimeStampedModel):
     vehicle = models.OneToOneField("Vehicle", on_delete=models.CASCADE)
     has_fine = models.BooleanField(_("Jarima mavjudmi?"), default=False)
     is_paid = models.BooleanField(_("To'langanmi?"), default=False)
@@ -106,7 +111,7 @@ class FineStatus(models.Model):
         return f"{self.vehicle.plate_number}: {'Bor' if self.has_fine else 'Yo‘q'}"
 
 
-class Area(models.Model):
+class Area(TimeStampedModel):
     area_id = models.IntegerField()
     created_at = models.DateTimeField(auto_now_add=True)
 
@@ -114,9 +119,26 @@ class Area(models.Model):
         return str(self.area_id)
 
 
-class ExceptionalTransports(models.Model):
+class ExceptionalTransports(TimeStampedModel):
     plate_number = models.CharField(_("Davlat raqami"), max_length=20, unique=True)
     owner_name = models.CharField(_("Egasining ismi"), max_length=255, blank=True)
 
     def __str__(self):
         return self.plate_number
+
+
+class Entry(TimeStampedModel):
+    plate_number = models.CharField(max_length=15)
+    photo = models.ImageField(upload_to='entries/')
+    is_manual = models.BooleanField(default=False)
+    timestamp = models.DateTimeField(auto_now_add=True)
+
+    def save(self, *args, **kwargs):
+        vehicle, created = Vehicle.objects.get_or_create(plate_number=self.plate_number)
+        if created:
+            vehicle.owner_name = ""
+            vehicle.save()
+        super().save(*args, **kwargs)
+
+        self.plate_number = self.plate_number.strip().upper()
+

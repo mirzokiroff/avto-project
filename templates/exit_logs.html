@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+{% block title %}Chiqqan Mashinalar{% endblock %}
+
+{% block content %}
+<div class="container my-5">
+  <h2 class="text-center mb-4">Chiqqan Mashinalar</h2>
+  <table class="table table-bordered table-striped" id="exit-log-table">
+    <thead class="table-dark">
+      <tr>
+        <th>#</th>
+        <th>Raqam</th>
+        <th>Chiqqan vaqti</th>
+        <th>Rasm</th>
+        <th>Toʻlangan summa</th>
+        <th>Chek (PDF)</th>
+      </tr>
+    </thead>
+    <tbody></tbody>
+  </table>
+</div>
+
+<script>
+  const token = localStorage.getItem('access');
+  if (!token) {
+    window.location.href = "/login/";
+  }
+
+  fetch('/api/exits/', {
+    headers: {
+      'Authorization': `Bearer ${token}`
+    }
+  })
+  .then(res => res.json())
+  .then(data => {
+    const tbody = document.querySelector('#exit-log-table tbody');
+    data.forEach((item, idx) => {
+      const row = `
+        <tr>
+          <td>${idx + 1}</td>
+          <td>${item.vehicle.plate_number}</td>
+          <td>${new Date(item.exit_time).toLocaleString()}</td>
+          <td>${item.photo ? `<img src="${item.photo}" width="100" height="60">` : '—'}</td>
+          <td>${item.paid_amount} soʻm</td>
+          <td>${item.receipt ? `<a href="${item.receipt}" target="_blank">Yuklab olish</a>` : '—'}</td>
+        </tr>
+      `;
+      tbody.innerHTML += row;
+    });
+  })
+  .catch(err => console.error("Error fetching exit logs:", err));
+</script>
+{% endblock %}

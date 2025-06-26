@@ -1,0 +1,44 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<h2 class="text-2xl font-semibold mb-4">Maxsus transportlar</h2>
+<table id="exceptional-table" class="min-w-full bg-white rounded shadow">
+    <thead>
+        <tr>
+            <th class="px-4 py-2">Davlat raqami</th>
+            <th class="px-4 py-2">Izoh</th>
+        </tr>
+    </thead>
+    <tbody>
+        <!-- JS orqali to‘ldiriladi -->
+    </tbody>
+</table>
+
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    const token = localStorage.getItem('access');
+    if (!token) {
+        window.location.href = "/login/";
+        return; }
+
+
+    fetch('/api/exceptional-transports/', {
+        headers: {
+            'Authorization': 'Bearer ' + token
+        }
+    })
+    .then(res => res.json())
+    .then(data => {
+        const table = document.querySelector('#exceptional-table tbody');
+        data.forEach(item => {
+            const row = `
+                <tr>
+                    <td class="border px-4 py-2">${item.plate_number}</td>
+                    <td class="border px-4 py-2">${item.note || '-'}</td>
+                </tr>`;
+            table.insertAdjacentHTML('beforeend', row);
+        });
+    });
+});
+</script>
+{% endblock %}

@@ -1,0 +1,52 @@
+{% extends 'base.html' %}
+{% block title %}Tizimga Kirish{% endblock %}
+
+{% block content %}
+    <h2 class="mb-4">🔐 Tizimga Kirish</h2>
+
+    <form id="loginForm" class="card p-4 shadow-sm bg-white">
+        <div class="mb-3">
+            <label for="username" class="form-label">Login</label>
+            <input type="text" id="username" class="form-control" required>
+        </div>
+
+        <div class="mb-3">
+            <label for="password" class="form-label">Parol</label>
+            <input type="password" id="password" class="form-control" required>
+        </div>
+
+        <button type="submit" class="btn btn-primary">Kirish</button>
+    </form>
+
+    <script>
+        document.getElementById('loginForm').addEventListener('submit', async function (e) {
+            e.preventDefault();
+
+            const username = document.getElementById('username').value;
+            const password = document.getElementById('password').value;
+
+            const response = await fetch('/api/token/', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    username: username,
+                    password: password
+                })
+            });
+
+            const data = await response.json();
+
+            if (response.ok) {
+                localStorage.setItem("access", data.access);
+                localStorage.setItem("refresh", data.refresh);
+                localStorage.setItem("role", data.role);
+
+                window.location.href = "/";
+            } else {
+                alert("Login xato: " + (data.detail || 'Nomaʼlum xatolik'));
+            }
+        });
+    </script>
+{% endblock %}

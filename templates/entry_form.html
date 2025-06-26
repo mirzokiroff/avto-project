@@ -1,0 +1,66 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block content %}
+    <div class="container mt-5">
+        <h2>Kirishni qoʻlda roʻyxatdan oʻtkazish</h2>
+        <form id="entry-form">
+            <div class="mb-3">
+                <label for="plate_number" class="form-label">Davlat raqami:</label>
+                <input type="text" id="plate_number" name="plate_number" class="form-control" required>
+            </div>
+
+            <div class="mb-3">
+                <label for="photo" class="form-label">Avtomobil rasmi:</label>
+                <input type="file" id="photo" name="photo" accept="image/*" class="form-control" required>
+            </div>
+
+            <button type="submit" class="btn btn-primary">Kiritish</button>
+        </form>
+
+        <div id="message" class="mt-3"></div>
+    </div>
+
+    <script>
+        document.getElementById("entry-form").addEventListener("submit", async function (e) {
+            e.preventDefault();
+
+            const plate_number = document.getElementById("plate_number").value;
+            const photo = document.getElementById("photo").files[0];
+
+            const token = localStorage.getItem("access");
+            if (!token) {
+                alert("Iltimos, avval tizimga kiring.");
+                return;
+            }
+
+            const formData = new FormData();
+            formData.append("plate_number", plate_number);
+            formData.append("photo", photo);
+            formData.append("is_manual", true);
+
+            try {
+                const response = await fetch("/api/entries/", {
+                    method: "POST",
+                    headers: {
+                        "Authorization": "Bearer " + token,
+                    },
+                    body: formData,
+                });
+
+                const data = await response.json();
+                const msgDiv = document.getElementById("message");
+
+                if (response.ok) {
+                    msgDiv.innerHTML = `<div class="alert alert-success">Mashina muvaffaqiyatli kiritildi: ${data.plate_number}</div>`;
+                    document.getElementById("entry-form").reset();
+                } else {
+                    msgDiv.innerHTML = `<div class="alert alert-danger">Xatolik: ${JSON.stringify(data)}</div>`;
+                }
+            } catch (err) {
+                console.error(err);
+                document.getElementById("message").innerHTML = `<div class="alert alert-danger">Server bilan bog‘lanishda xatolik</div>`;
+            }
+        });
+    </script>
+{% endblock %}

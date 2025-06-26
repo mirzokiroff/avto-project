@@ -5,6 +5,7 @@ cffi==1.17.1
 charset-normalizer==3.4.2
 cssselect2==0.8.0
 Django==5.2.3
+django-cors-headers==4.7.0
 django-environ==0.12.0
 django-filter==25.1
 django-modeltranslation==0.19.15

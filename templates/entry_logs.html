@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+{% block title %}Kirgan Mashinalar{% endblock %}
+
+{% block content %}
+<div class="container my-5">
+  <h2 class="text-center mb-4">Kirgan Mashinalar</h2>
+  <table class="table table-bordered table-striped" id="entry-log-table">
+    <thead class="table-dark">
+      <tr>
+        <th>#</th>
+        <th>Raqam</th>
+        <th>Vaqti</th>
+        <th>Rasm</th>
+        <th>Qoʻlda kiritilganmi</th>
+      </tr>
+    </thead>
+    <tbody></tbody>
+  </table>
+</div>
+
+<script>
+  const token = localStorage.getItem('access');
+  if (!token) {
+    window.location.href = "/login/";
+  }
+
+  fetch('/api/entries/', {
+    headers: {
+      'Authorization': `Bearer ${token}`
+    }
+  })
+  .then(res => res.json())
+  .then(data => {
+    const tbody = document.querySelector('#entry-log-table tbody');
+    data.forEach((item, idx) => {
+      const row = `
+        <tr>
+          <td>${idx + 1}</td>
+          <td>${item.vehicle.plate_number}</td>
+          <td>${new Date(item.entry_time).toLocaleString()}</td>
+          <td>
+            ${item.photo ? `<img src="${item.photo}" width="100" height="60">` : '—'}
+          </td>
+          <td>${item.is_manual ? "Ha" : "Yo'q"}</td>
+        </tr>
+      `;
+      tbody.innerHTML += row;
+    });
+  })
+  .catch(err => console.error("Error fetching entry logs:", err));
+</script>
+{% endblock %}

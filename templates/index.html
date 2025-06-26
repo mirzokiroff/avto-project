@@ -1,0 +1,13 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Asosiy sahifa{% endblock %}
+
+{% block content %}
+<h1>Jarima maydoni boshqaruv paneliga xush kelibsiz</h1>
+<p>Pastdagi menyudan kerakli bo‘limni tanlang yoki qidiruvdan foydalaning.</p>
+<form method="get" action="#">
+    <input type="text" name="search" placeholder="Mashina raqami bo‘yicha qidiruv...">
+    <button type="submit">Qidirish</button>
+</form>
+{% endblock %}

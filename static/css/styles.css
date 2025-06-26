@@ -1,0 +1,17 @@
+body {
+    font-family: 'Segoe UI', sans-serif;
+}
+
+table {
+    background: white;
+    border-radius: 8px;
+    overflow: hidden;
+}
+
+th {
+    background-color: #f8f9fa;
+}
+
+.inputt {
+    border: 1px solid cornflowerblue;
+}

@@ -1,0 +1,93 @@
+{% extends 'base.html' %}
+
+{% block content %}
+    <div class="max-w-4xl mx-auto">
+        <h2 class="text-2xl font-semibold mb-4">Mashina Tafsilotlari</h2>
+
+        <div id="vehicle-info" class="bg-white rounded p-4 shadow mb-6">
+            <p><strong>Davlat raqami:</strong> <span id="plate-number"></span></p>
+            <p><strong>Ruxsat etilgan:</strong> <span id="is-whitelisted"></span></p>
+        </div>
+
+        <div class="mb-4">
+            <h3 class="text-xl font-semibold mb-2">Kirgan vaqtlar</h3>
+            <ul id="entry-logs" class="bg-white rounded p-4 shadow space-y-2"></ul>
+        </div>
+
+        <div class="mb-4">
+            <h3 class="text-xl font-semibold mb-2">Chiqqan vaqtlar</h3>
+            <ul id="exit-logs" class="bg-white rounded p-4 shadow space-y-2"></ul>
+        </div>
+
+        <div class="mb-4">
+            <h3 class="text-xl font-semibold mb-2">Jarimalar</h3>
+            <p><strong>Bor:</strong> <span id="has-fine"></span></p>
+            <p><strong>To‘langan:</strong> <span id="is-paid"></span></p>
+        </div>
+    </div>
+
+    <script>
+        const token = localStorage.getItem("access");
+        if (!token) {
+            alert("Iltimos, tizimga kiring!");
+            window.location.href = "/login/";
+        }
+
+        const urlParams = new URLSearchParams(window.location.search);
+        const id = urlParams.get('id');
+        if (!id) {
+            alert("Mashina ID'si topilmadi!");
+            return;
+        }
+
+        fetch(`/api/vehicles/${id}/`, {
+            headers: {
+                'Authorization': 'Bearer ' + token
+            }
+        })
+            .then(res => res.json())
+            .then(vehicle => {
+                document.getElementById('plate-number').textContent = vehicle.plate_number;
+                document.getElementById('is-whitelisted').textContent = vehicle.is_whitelisted ? "Ha" : "Yo'q";
+
+                fetch(`/api/fine-status/?vehicle=${vehicle.id}`, {
+                    headers: {'Authorization': 'Bearer ' + token}
+                })
+                    .then(res => res.json())
+                    .then(fine => {
+                        const f = fine[0] || {};
+                        document.getElementById('has-fine').textContent = f.has_fine ? "Ha" : "Yo'q";
+                        document.getElementById('is-paid').textContent = f.is_paid ? "Ha" : "Yo'q";
+                    });
+
+                fetch(`/api/entries/?vehicle=${vehicle.id}`, {
+                    headers: {'Authorization': 'Bearer ' + token}
+                })
+                    .then(res => res.json())
+                    .then(entries => {
+                        const list = document.getElementById('entry-logs');
+                        entries.forEach(log => {
+                            const item = document.createElement('li');
+                            item.textContent = `⏱️ ${new Date(log.entry_time).toLocaleString()} (${log.is_manual ? 'Qo‘lda' : 'Avtomatik'})`;
+                            list.appendChild(item);
+                        });
+                    });
+
+                fetch(`/api/exits/?vehicle=${vehicle.id}`, {
+                    headers: {'Authorization': 'Bearer ' + token}
+                })
+                    .then(res => res.json())
+                    .then(exits => {
+                        const list = document.getElementById('exit-logs');
+                        exits.forEach(log => {
+                            const item = document.createElement('li');
+                            item.textContent = `🚪 ${new Date(log.exit_time).toLocaleString()} — To‘langan: ${log.paid_amount} so‘m`;
+                            list.appendChild(item);
+                        });
+                    });
+            })
+            .catch(err => {
+                alert("Mashina topilmadi yoki token noto‘g‘ri.");
+            });
+    </script>
+{% endblock %}
