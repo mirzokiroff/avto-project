@@ -5,11 +5,11 @@ from dotenv import load_dotenv
 load_dotenv()
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-SECRET_KEY = os.getenv("SECRET_KEY")
-
+SECRET_KEY = os.getenv("SECRET_KEY", "dssdgdfgsdfgsdfgsdashgdfbhsdf")
 DEBUG = os.getenv("DEBUG", False)
 
-ALLOWED_HOSTS = ["127.0.0.1"]
+
+ALLOWED_HOSTS = ["*"]
 
 INSTALLED_APPS = [
     'corsheaders',
@@ -113,10 +113,11 @@ LOCALE_PATHS = [BASE_DIR / 'locale']
 USE_TZ = True
 
 STATIC_URL = 'static/'
-STATIC_ROOT = os.path.join(BASE_DIR, "static")
-STATICFILES_DIRS = [
-    os.path.join(BASE_DIR, 'staticfiles'),
-]
+if DEBUG:
+    STATICFILES_DIRS = [os.path.join(BASE_DIR, 'static')]
+else:
+    STATIC_ROOT = os.path.join(BASE_DIR, "static")
+
 
 MEDIA_URL = 'media/'
 MEDIA_ROOT = os.path.join(BASE_DIR, "media")
