@@ -5,8 +5,14 @@ from dotenv import load_dotenv
 load_dotenv()
 BASE_DIR = Path(__file__).resolve().parent.parent
 
+<<<<<<< Updated upstream
 SECRET_KEY = os.getenv("SECRET_KEY", "dssdgdfgsdfgsdfgsdashgdfbhsdf")
 DEBUG = os.getenv("DEBUG", False)
+=======
+SECRET_KEY = os.getenv("SECRET_KEY", "jhsdfvbjksghdfvksdhjfvgksdfhj")
+
+DEBUG = os.getenv("DEBUG", True)
+>>>>>>> Stashed changes
 
 
 ALLOWED_HOSTS = ["*"]
@@ -21,6 +27,7 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'drf_yasg',
     # Custom packages
     "apps.apps.AppsConfig"
 ]

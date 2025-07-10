@@ -16,46 +16,39 @@ class TimeStampedModel(models.Model):
 
 
 class CustomUserManager(BaseUserManager):
-    def create_user(self, username, password=None, **extra_fields):
-        if not username:
+    def create_user(self, phone, password=None, **extra_fields):
+        if not phone:
             raise ValueError("Foydalanuvchi nomi kiritilishi kerak!")
-        user = self.model(username=username, **extra_fields)
+        user = self.model(phone=phone, **extra_fields)
         user.set_password(password)
         user.save(using=self._db)
         return user
 
-    def create_superuser(self, username, password, **extra_fields):
+    def create_superuser(self, phone, password, **extra_fields):
         extra_fields.setdefault('is_staff', True)
         extra_fields.setdefault('is_superuser', True)
-        return self.create_user(username, password, **extra_fields)
+        return self.create_user(phone, password, **extra_fields)
 
 
 class CustomUser(AbstractUser, TimeStampedModel):
     full_name = models.CharField(_("To'liq ism"), max_length=100)
-    phone = models.CharField(_("Telefon raqam"), max_length=13, validators=[validate_phone_number], unique=True,
-                             null=True, blank=True)
+    phone = models.CharField(_("Telefon raqam"), max_length=13, validators=[validate_phone_number], unique=True)
 
     is_admin = models.BooleanField(_("Adminmi?"), default=False)
-    is_guard = models.BooleanField(_("Qorovulmi?"), default=False)
+    is_guard = models.BooleanField(_("Xodimmi?"), default=False)
 
-    # Ushbu qatorni o'zgartiramiz:
-    USERNAME_FIELD = "username"  # username orqali login qilish
+    USERNAME_FIELD = "phone"
     REQUIRED_FIELDS = ["full_name"]
 
     objects = CustomUserManager()
 
     def __str__(self):
-        return self.username
+        return self.phone
 
 
 class Vehicle(TimeStampedModel):
     plate_number = models.CharField(_("Davlat raqami"), max_length=20, unique=True)
     owner_name = models.CharField(_("Egasining ismi"), max_length=255, blank=True)
-    is_evacuator = models.BooleanField(_("Evakuatormi?"), default=False)
-    is_whitelisted = models.BooleanField(_("Doimiy kiruvchi (ruxsatli)"), default=False)
-
-    def should_open_barrier(self):
-        return self.is_whitelisted or self.is_evacuator
 
     def __str__(self):
         return self.plate_number
@@ -125,20 +118,3 @@ class ExceptionalTransports(TimeStampedModel):
 
     def __str__(self):
         return self.plate_number
-
-
-class Entry(TimeStampedModel):
-    plate_number = models.CharField(max_length=15)
-    photo = models.ImageField(upload_to='entries/')
-    is_manual = models.BooleanField(default=False)
-    timestamp = models.DateTimeField(auto_now_add=True)
-
-    def save(self, *args, **kwargs):
-        vehicle, created = Vehicle.objects.get_or_create(plate_number=self.plate_number)
-        if created:
-            vehicle.owner_name = ""
-            vehicle.save()
-        super().save(*args, **kwargs)
-
-        self.plate_number = self.plate_number.strip().upper()
-
