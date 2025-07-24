@@ -2,51 +2,99 @@
 {% block title %}Chiqqan Mashinalar{% endblock %}
 
 {% block content %}
-<div class="container my-5">
-  <h2 class="text-center mb-4">Chiqqan Mashinalar</h2>
-  <table class="table table-bordered table-striped" id="exit-log-table">
-    <thead class="table-dark">
-      <tr>
-        <th>#</th>
-        <th>Raqam</th>
-        <th>Chiqqan vaqti</th>
-        <th>Rasm</th>
-        <th>Toʻlangan summa</th>
-        <th>Chek (PDF)</th>
-      </tr>
-    </thead>
-    <tbody></tbody>
-  </table>
-</div>
+    <div class="container my-5">
+        <h2 class="text-center mb-4">Chiqqan Mashinalar</h2>
+        <table class="table table-bordered table-striped" id="exit-log-table">
+            <thead class="table-dark">
+            <tr>
+                <th>#</th>
+                <th>Davlat raqami</th>
+                <th>Chiqqan vaqti</th>
+                <th>Old rasm</th>
+                <th>Qoʻlda kiritilganmi?</th>
+                <th>Qoʻlda chiqarilganmi?</th>
+                <th>Maydonda turgan vaqt</th>
+                <th>To‘lov holati</th>
+                <th>To‘langan summa</th>
+                <th>Chek (PDF)</th>
+                <th>Ko‘rish</th>
+            </tr>
+            </thead>
+            <tbody></tbody>
+        </table>
+    </div>
 
-<script>
-  const token = localStorage.getItem('access');
-  if (!token) {
-    window.location.href = "/login/";
-  }
+    <script>
+        const token = localStorage.getItem('access');
+        if (!token) {
+            window.location.href = "/login/";
+        }
 
-  fetch('/api/exits/', {
-    headers: {
-      'Authorization': `Bearer ${token}`
-    }
-  })
-  .then(res => res.json())
-  .then(data => {
-    const tbody = document.querySelector('#exit-log-table tbody');
-    data.forEach((item, idx) => {
-      const row = `
-        <tr>
-          <td>${idx + 1}</td>
-          <td>${item.vehicle.plate_number}</td>
-          <td>${new Date(item.exit_time).toLocaleString()}</td>
-          <td>${item.photo ? `<img src="${item.photo}" width="100" height="60">` : '—'}</td>
-          <td>${item.paid_amount} soʻm</td>
-          <td>${item.receipt ? `<a href="${item.receipt}" target="_blank">Yuklab olish</a>` : '—'}</td>
-        </tr>
-      `;
-      tbody.innerHTML += row;
-    });
-  })
-  .catch(err => console.error("Error fetching exit logs:", err));
-</script>
+        fetch('/api/exits/', {
+            headers: {
+                'Authorization': `Bearer ${token}`
+            }
+        })
+            .then(res => res.json())
+            .then(data => {
+                const tbody = document.querySelector('#exit-log-table tbody');
+                if (!Array.isArray(data)) {
+                    console.error("API noto‘g‘ri formatda javob berdi:", data);
+                    tbody.innerHTML = `<tr><td colspan="10" class="text-center text-danger">Xatolik: noto‘g‘ri maʼlumot</td></tr>`;
+                    return;
+                }
+
+                if (data.length === 0) {
+                    tbody.innerHTML = `<tr><td colspan="10" class="text-center">Hozircha chiqishlar yoʻq</td></tr>`;
+                    return;
+                }
+
+                data.forEach((item, idx) => {
+                    const plate = item.vehicle_plate_number || item.plate_number || 'Nomaʼlum';
+                    const exitTime = item.timestamp ? new Date(item.timestamp).toLocaleString('uz-UZ', {timeZone: 'Asia/Tashkent'}) : '—';
+
+                    const entryTimeObj = item.entry_time ? new Date(item.entry_time) : null;
+                    const exitTimeObj = item.timestamp ? new Date(item.timestamp) : null;
+
+                    let duration = "—";
+                    if (entryTimeObj && exitTimeObj) {
+                        const diffMs = exitTimeObj - entryTimeObj;
+                        const oneDayMs = 24 * 60 * 60 * 1000;
+                        let days = Math.ceil(diffMs / oneDayMs);
+                        duration = `${days} sutka`;
+                    }
+
+
+                    const paid = item.yard_fee_paid ? "✅ To‘langan" : "❌ To‘lanmagan";
+                    const paidAmount = item.yard_fee ? `${item.yard_fee.toLocaleString('uz-UZ')} so‘m` : "0 so‘m";
+                    const photo = item.photo_front_exit ? `<img src="${item.photo_front_exit}" width="100" height="60" alt="Old rasm">` : '—';
+                    const manual_entry = item.is_manual_entry ? "✅ Ha" : "❌ Yo‘q";
+                    const manual_exit = item.is_manual_exit ? "✅ Ha" : "❌ Yo‘q";
+                    const receipt = item.receipt ? `<a href="${item.receipt}" target="_blank" class="btn btn-sm btn-primary">Yuklab olish</a>` : '—';
+                    const detail = item.vehicle ? `<a href="/vehicle-detail/?id=${item.vehicle}" class="btn btn-sm btn-info">Ko‘rish</a>` : '—';
+
+                    const row = `
+                <tr>
+                    <td>${idx + 1}</td>
+                    <td>${plate}</td>
+                    <td>${exitTime}</td>
+                    <td>${photo}</td>
+                    <td>${manual_entry}</td>
+                    <td>${manual_exit}</td>
+                    <td>${duration}</td>
+                    <td>${paid}</td>
+                    <td>${paidAmount}</td>
+                    <td>${receipt}</td>
+                    <td>${detail}</td>
+                </tr>
+            `;
+                    tbody.innerHTML += row;
+                });
+            })
+            .catch(err => {
+                console.error("Chiqqan mashinalarni olishda xatolik:", err);
+                document.querySelector('#exit-log-table tbody').innerHTML =
+                    `<tr><td colspan="10" class="text-center text-danger">Maʼlumotlarni yuklashda xatolik yuz berdi</td></tr>`;
+            });
+    </script>
 {% endblock %}

@@ -1,52 +1,71 @@
 {% extends "base.html" %}
-{% block title %}Kirgan Mashinalar{% endblock %}
-
 {% block content %}
-<div class="container my-5">
-  <h2 class="text-center mb-4">Kirgan Mashinalar</h2>
-  <table class="table table-bordered table-striped" id="entry-log-table">
-    <thead class="table-dark">
-      <tr>
-        <th>#</th>
-        <th>Raqam</th>
-        <th>Vaqti</th>
-        <th>Rasm</th>
-        <th>Qoʻlda kiritilganmi</th>
-      </tr>
-    </thead>
-    <tbody></tbody>
-  </table>
-</div>
+    <div class="container mt-4">
+        <h2>Kirgan Mashinalar Ro'yxati</h2>
+        <table class="table table-bordered mt-3">
+            <thead>
+            <tr>
+                <th>#</th>
+                <th>Davlat raqami</th>
+                <th>Rasm</th>
+                <th>Qoʻlda kiritilganmi?</th>
+                <th>Vaqti</th>
+                <th class="py-2 px-4">Amallar</th>
 
-<script>
-  const token = localStorage.getItem('access');
-  if (!token) {
-    window.location.href = "/login/";
-  }
+            </tr>
+            </thead>
+            <tbody id="entry-table-body">
+            </tbody>
+        </table>
+    </div>
 
-  fetch('/api/entries/', {
-    headers: {
-      'Authorization': `Bearer ${token}`
-    }
-  })
-  .then(res => res.json())
-  .then(data => {
-    const tbody = document.querySelector('#entry-log-table tbody');
-    data.forEach((item, idx) => {
-      const row = `
-        <tr>
-          <td>${idx + 1}</td>
-          <td>${item.vehicle.plate_number}</td>
-          <td>${new Date(item.entry_time).toLocaleString()}</td>
-          <td>
-            ${item.photo ? `<img src="${item.photo}" width="100" height="60">` : '—'}
-          </td>
-          <td>${item.is_manual ? "Ha" : "Yo'q"}</td>
-        </tr>
-      `;
-      tbody.innerHTML += row;
-    });
-  })
-  .catch(err => console.error("Error fetching entry logs:", err));
-</script>
+    <script>
+        document.addEventListener("DOMContentLoaded", function () {
+            const token = localStorage.getItem("access");
+
+            if (!token) {
+                alert("Tizimga kirmagansiz.");
+                return;
+            }
+
+            fetch('/api/entries/', {
+                method: 'GET',
+                headers: {
+                    'Authorization': 'Bearer ' + token,
+                    'Content-Type': 'application/json'
+                }
+            })
+                .then(response => response.json())
+                .then(data => {
+                    const tbody = document.getElementById("entry-table-body");
+                    tbody.innerHTML = ''; // 🔑 oldingi ma'lumotlarni tozalash
+
+                    data.forEach((entry, index) => {
+                        const photoUrl = entry.photo_front_url || "";
+
+                        const row = `
+                    <tr>
+                        <td>${index + 1}</td>
+                        <td>${entry.plate_number || 'Davlat raqamisiz'}</td>
+                        <td>
+                            ${photoUrl ? `<img src="${photoUrl}" width="120"/>` : 'Yo‘q'}
+                        </td>
+                        <td>${entry.is_manual ? '✅' : '❌'}</td>
+                        <td>${new Date(entry.timestamp).toLocaleString()}</td>
+                        <td class="py-2 px-4">
+                            <a href="/vehicle-detail/?id=${entry.id}"
+                               class="inline-block bg-blue-500 hover:bg-blue-600 text-white text-sm font-medium py-1 px-3 rounded bg-info">
+                               Ko‘rish
+                            </a>
+                        </td>
+                    </tr>
+                `;
+                        tbody.innerHTML += row;
+                    });
+                })
+                .catch(err => {
+                    console.error("Xatolik:", err);
+                });
+        });
+    </script>
 {% endblock %}

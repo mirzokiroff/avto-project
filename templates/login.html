@@ -2,51 +2,85 @@
 {% block title %}Tizimga Kirish{% endblock %}
 
 {% block content %}
-    <h2 class="mb-4">🔐 Tizimga Kirish</h2>
+    <div class="container mt-5">
+        <h2 class="mb-4 text-center">🔐 Tizimga Kirish</h2>
 
-    <form id="loginForm" class="card p-4 shadow-sm bg-white">
-        <div class="mb-3">
-            <label for="username" class="form-label">Login</label>
-            <input type="text" id="username" class="form-control" required>
+        <form id="loginForm" class="card p-4 shadow-sm bg-white mx-auto" style="max-width: 400px;">
+            <div class="mb-3">
+                <label for="username" class="form-label">Login</label>
+                <input type="text" id="username" class="form-control" required>
+            </div>
+
+            <div class="mb-3">
+                <label for="password" class="form-label">Parol</label>
+                <div class="input-group">
+                    <input type="password" id="password" class="form-control" required>
+                    <button class="btn btn-outline-secondary" type="button" id="togglePassword">
+                        <i class="bi bi-eye" id="eyeIcon"></i>
+                    </button>
+                </div>
+            </div>
+
+
+            <button type="submit" class="btn btn-primary w-100">Kirish</button>
+        </form>
+
+        <div id="errorBox" class="alert alert-danger mt-3 d-none text-center" role="alert">
+            <!-- Xatolik matni shu yerga chiqadi -->
         </div>
-
-        <div class="mb-3">
-            <label for="password" class="form-label">Parol</label>
-            <input type="password" id="password" class="form-control" required>
-        </div>
-
-        <button type="submit" class="btn btn-primary">Kirish</button>
-    </form>
+    </div>
 
     <script>
         document.getElementById('loginForm').addEventListener('submit', async function (e) {
             e.preventDefault();
 
-            const username = document.getElementById('username').value;
-            const password = document.getElementById('password').value;
+            const username = document.getElementById('username').value.trim();
+            const password = document.getElementById('password').value.trim();
+            const errorBox = document.getElementById('errorBox');
+            errorBox.classList.add('d-none');
 
-            const response = await fetch('/api/token/', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    username: username,
-                    password: password
-                })
-            });
+            try {
+                const response = await fetch('/api/token/', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({username, password})
+                });
 
-            const data = await response.json();
+                const data = await response.json();
 
-            if (response.ok) {
-                localStorage.setItem("access", data.access);
-                localStorage.setItem("refresh", data.refresh);
-                localStorage.setItem("role", data.role);
+                if (response.ok) {
+                    // Tokenlarni saqlaymiz
+                    localStorage.setItem("access", data.access);
+                    localStorage.setItem("refresh", data.refresh);
+                    localStorage.setItem("username", username);
 
-                window.location.href = "/";
-            } else {
-                alert("Login xato: " + (data.detail || 'Nomaʼlum xatolik'));
+                    if (data.role) {
+                        localStorage.setItem("role", data.role);
+                    }
+
+                    window.location.href = "/";
+                } else {
+                    errorBox.textContent = data.detail || "Login yoki parol noto‘g‘ri!";
+                    errorBox.classList.remove('d-none');
+                }
+            } catch (err) {
+                errorBox.textContent = "Serverga ulanishda xatolik yuz berdi.";
+                errorBox.classList.remove('d-none');
+                console.error("Login xatoligi:", err);
             }
         });
     </script>
+    <script>
+        document.getElementById("togglePassword").addEventListener("click", function () {
+            const passwordInput = document.getElementById("password");
+            const eyeIcon = document.getElementById("eyeIcon");
+
+            const isPassword = passwordInput.type === "password";
+            passwordInput.type = isPassword ? "text" : "password";
+            eyeIcon.className = isPassword ? "bi bi-eye-slash" : "bi bi-eye";
+        });
+    </script>
+
 {% endblock %}

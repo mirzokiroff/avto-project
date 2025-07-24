@@ -2,11 +2,29 @@
 
 {% block content %}
 <h2 class="text-2xl font-semibold mb-4">Maxsus transportlar</h2>
-<table id="exceptional-table" class="min-w-full bg-white rounded shadow">
+    <h4>Eslatma: Maxsus Transportlarni faqat admin qo'shadi va o'chiradi</h4>
+
+<!-- Qo‘shish formasi (faqat admin uchun ko‘rsatiladi) -->
+<div id="add-form" class="mb-6 hidden">
+    <div class="flex flex-col md:flex-row gap-2">
+        <input type="text" id="plate_number" placeholder="Davlat raqami"
+               class="border rounded px-4 py-2 w-full md:w-1/3" />
+        <input type="text" id="owner_name" placeholder="Egasining ismi"
+               class="border rounded px-4 py-2 w-full md:w-1/3" />
+        <input type="text" id="phone_number" placeholder="Telefon raqami"
+               class="border rounded px-4 py-2 w-full md:w-1/3" />
+        <button id="add-btn" class="bg-blue-500 text-white px-4 py-2 rounded btn btn-info">Qo‘shish</button>
+    </div>
+</div>
+
+<!-- Jadval -->
+<table id="exceptional-table" class="min-w-full bg-white rounded shadow mt-4">
     <thead>
         <tr>
-            <th class="px-4 py-2">Davlat raqami</th>
-            <th class="px-4 py-2">Izoh</th>
+            <th class="px-4 py-2 border">Davlat raqami</th>
+            <th class="px-4 py-2 border">Egasining ismi</th>
+            <th class="px-4 py-2 border">Telefon raqami</th>
+            <th class="px-4 py-2 border">Amallar</th>
         </tr>
     </thead>
     <tbody>
@@ -17,11 +35,35 @@
 <script>
 document.addEventListener('DOMContentLoaded', function () {
     const token = localStorage.getItem('access');
+    const role = localStorage.getItem('role');  // "admin" yoki "user"
+
     if (!token) {
         window.location.href = "/login/";
-        return; }
+        return;
+    }
 
+    const addForm = document.getElementById('add-form');
+    const addBtn = document.getElementById('add-btn');
+    const tableBody = document.querySelector('#exceptional-table tbody');
 
+    if (role === 'admin') {
+        addForm.classList.remove('hidden');
+    }
+
+    function addRow(item) {
+        const row = document.createElement('tr');
+        row.innerHTML = `
+            <td class="border px-4 py-2">${item.plate_number}</td>
+            <td class="border px-4 py-2">${item.owner_name || '-'}</td>
+            <td class="border px-4 py-2">${item.phone_number || '-'}</td>
+            <td class="border px-4 py-2">
+                ${role === 'admin' ? `<button class="delete-btn bg-red-500 text-white px-2 py-1 rounded btn btn-danger" data-id="${item.id}">O‘chirish</button>` : ''}
+            </td>
+        `;
+        tableBody.appendChild(row);
+    }
+
+    // Ma'lumotlarni yuklash
     fetch('/api/exceptional-transports/', {
         headers: {
             'Authorization': 'Bearer ' + token
@@ -29,15 +71,60 @@ document.addEventListener('DOMContentLoaded', function () {
     })
     .then(res => res.json())
     .then(data => {
-        const table = document.querySelector('#exceptional-table tbody');
-        data.forEach(item => {
-            const row = `
-                <tr>
-                    <td class="border px-4 py-2">${item.plate_number}</td>
-                    <td class="border px-4 py-2">${item.note || '-'}</td>
-                </tr>`;
-            table.insertAdjacentHTML('beforeend', row);
+        data.forEach(addRow);
+    });
+
+    // Qo‘shish
+    if (addBtn) {
+        addBtn.addEventListener('click', function () {
+            const plate_number = document.getElementById('plate_number').value.trim();
+            const owner_name = document.getElementById('owner_name').value.trim();
+            const phone_number = document.getElementById('phone_number').value.trim();
+
+            if (!plate_number) return alert("Davlat raqamini kiriting");
+
+            fetch('/api/exceptional-transports/', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': 'Bearer ' + token
+                },
+                body: JSON.stringify({ plate_number, owner_name, phone_number })
+            })
+            .then(res => {
+                if (!res.ok) throw new Error('Xatolik');
+                return res.json();
+            })
+            .then(item => {
+                addRow(item);
+                document.getElementById('plate_number').value = '';
+                document.getElementById('owner_name').value = '';
+                document.getElementById('phone_number').value = '';
+            })
+            .catch(() => alert("Qo‘shishda xatolik"));
         });
+    }
+
+    // O‘chirish
+    tableBody.addEventListener('click', function (e) {
+        if (e.target.classList.contains('delete-btn')) {
+            const id = e.target.dataset.id;
+            if (!confirm("Rostdan ham o‘chirmoqchimisiz?")) return;
+
+            fetch(`/api/exceptional-transports/${id}/`, {
+                method: 'DELETE',
+                headers: {
+                    'Authorization': 'Bearer ' + token
+                }
+            })
+            .then(res => {
+                if (res.ok) {
+                    e.target.closest('tr').remove();
+                } else {
+                    alert("O‘chirishda xatolik");
+                }
+            });
+        }
     });
 });
 </script>

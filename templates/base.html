@@ -2,93 +2,264 @@
 <!DOCTYPE html>
 <html lang="uz">
 <head>
-    <meta charset="UTF-8">
-    <title>{% block title %}Jarima Maydoni{% endblock %}</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta charset="UTF-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1"/>
+    <title>
+        {% block title %}
+            Jarima Maydoni
+        {% endblock %}
+    </title>
 
-    <!-- Bootstrap 5 CDN -->
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
-    <!-- Maxsus CSS -->
-    <link rel="stylesheet" href="{% static 'static/css/styles.css' %}">
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet"/>
+
+    <!-- Bootstrap 5 -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet"/>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet"/>
+
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="{% static 'static/css/styles.css' %}"/>
+
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f4f6f8;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        input:invalid {
+            border-color: #dc3545;
+        }
+
+
+        #user-info {
+            background-color: #f0f4f9;
+            border-bottom: 1px solid #d3dce6;
+        }
+
+        .navbar {
+            background-color: #003049; /* Dark navy */
+        }
+
+        .navbar-brand {
+            font-weight: 600;
+            font-size: 1.3rem;
+            color: #fff;
+        }
+
+        .nav-link {
+            color: #ffffff !important;
+            font-weight: 500;
+        }
+
+        .nav-link:hover {
+            color: #669bbc !important;
+        }
+
+        .navbar-toggler {
+            border-color: rgba(255, 255, 255, 0.3);
+        }
+
+        .navbar-toggler-icon {
+            background-image: url("data:image/svg+xml;charset=utf8,%3Csvg viewBox='0 0 30 30' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath stroke='rgba%28255, 255, 255, 0.7%29' stroke-width='2' stroke-linecap='round' stroke-miterlimit='10' d='M4 7h22M4 15h22M4 23h22'/%3E%3C/svg%3E");
+        }
+
+        footer {
+            background-color: #003049;
+        }
+
+        footer small {
+            color: #dee2e6;
+        }
+
+        #user-info {
+            background-color: #e2ecf5;
+            padding: 10px 20px;
+            text-align: right;
+            font-size: 0.9rem;
+            color: #333;
+        }
+
+        .admin-only {
+            display: none;
+        }
+
+        .container {
+            flex: 1;
+        }
+    </style>
 </head>
-<body class="bg-light">
-
+<body>
 <!-- NAVBAR -->
-<nav class="navbar navbar-expand-lg navbar-dark bg-primary shadow">
+<nav class="navbar navbar-expand-lg navbar-dark shadow-sm sticky-top">
     <div class="container">
         <a class="navbar-brand" href="{% url 'index' %}">🚗 Jarima Maydoni</a>
-        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarContent">
-            <span class="navbar-toggler-icon"></span>
-        </button>
+        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarContent"><span
+                class="navbar-toggler-icon"></span></button>
 
         <div class="collapse navbar-collapse" id="navbarContent">
-            <ul class="navbar-nav ms-auto mb-2 mb-lg-0">
-                <li class="nav-item"><a class="nav-link" href="{% url 'index' %}">Asosiy</a></li>
-                <li class="nav-item"><a class="nav-link" href="{% url 'vehicles' %}">Mashinalar</a></li>
-                <li class="nav-item"><a class="nav-link" href="{% url 'entry_form' %}">Mashina kiritish</a></li>
-                <li class="nav-item"><a class="nav-link" href="{% url 'entry-logs' %}">Kirgan Mashinalar</a></li>
-                <li class="nav-item"><a class="nav-link" href="{% url 'exit-logs' %}">Chiqqan Mashinalar</a></li>
-                <li class="nav-item"><a class="nav-link" href="{% url 'users' %}">User</a></li>
-                <li class="nav-item"><a class="nav-link" href="/admin/">Admin</a></li>
-                <li class="nav-item"><a class="nav-link" href="{% url 'exceptional-transports' %}">Maxsus Mashinalar</a>
+            <ul class="navbar-nav ms-auto">
+                <li class="nav-item">
+                    <a class="nav-link" href="{% url 'index' %}">Asosiy</a>
                 </li>
-                <li class="admin-only"><a href="{% url 'users' %}">Foydalanuvchilar</a></li>
-                <li class="admin-only"><a href="{% url 'report' %}">Hisobotlar</a></li>
-
+                <li class="nav-item">
+                    <a class="nav-link" href="{% url 'vehicles' %}">Mashinalar</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="{% url 'entry_form' %}">Mashina kiritish</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="{% url 'exit-form' %}">Qoʻlda chiqarish</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="{% url 'entry-logs' %}">Kirgan Mashinalar</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="{% url 'exit-logs' %}">Chiqqan Mashinalar</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="/admin/">Admin</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="{% url 'exceptional-transports' %}">Maxsus Mashinalar</a>
+                </li>
+                <li class="nav-item admin-only">
+                    <a class="nav-link" href="{% url 'users' %}">Foydalanuvchilar</a>
+                </li>
+                <li class="nav-item admin-only">
+                    <a class="nav-link" href="{% url 'report' %}">Hisobotlar</a>
+                </li>
             </ul>
         </div>
     </div>
 </nav>
 
-{% if user.is_authenticated %}
-    <p>Xush kelibsiz, {{ user.username }} | <a href="{% url 'logout' %}">Chiqish</a></p>
-{% else %}
-    <a href="{% url 'login' %}">Kirish</a>
-{% endif %}
-
+<!-- USER INFO -->
+<div id="user-info" class="shadow-sm"></div>
 
 <!-- CONTENT -->
 <div class="container my-4">
     {% block content %}
+
     {% endblock %}
 </div>
 
 <!-- FOOTER -->
-<footer class="bg-dark text-white text-center py-3 mt-auto">
+<footer class="text-white text-center py-3 mt-auto">
     <div class="container">
-        <small>&copy; {{ now|date:"Y" }} Jarima Maydoni. Barcha huquqlar himoyalangan.</small>
+        <small>&copy; {{ now|date:'Y' }} Jarima Maydoni. Barcha huquqlar himoyalangan.</small>
     </div>
 </footer>
 
 <!-- Bootstrap JS -->
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
 
+<!-- Auth JS -->
 <script>
-    document.addEventListener('DOMContentLoaded', function () {
-        const token = localStorage.getItem('access');
-        const currentPage = window.location.pathname;
+    function sanitizeInput(el) {
+        el.value = el.value.toUpperCase().replace(/[^A-Z0-9\-]/g, '')
+    }
 
-        const exemptPages = ['/login/', '/register/'];
-        if (!token && !exemptPages.includes(currentPage)) {
-            window.location.href = "/login/";
+    function validateSearch() {
+        const input = document.getElementById('searchInput').value.trim()
+        const isValid = /^[0-9A-Z\-]{4,15}$/.test(input)
+        if (!isValid) {
+            alert("Iltimos, faqat harf va raqamlardan iborat raqam kiriting (masalan: 01A123BC).")
+            return false
         }
-
-        const userRole = localStorage.getItem("role");
-        if (userRole !== 'admin') {
-            // Hisobotlar va foydalanuvchi boshqaruvi menyusini yashirish
-            document.querySelectorAll('.admin-only').forEach(el => el.style.display = 'none');
-        }
-
-
-        // JWT tokenni dekodlab foydalanuvchi nomini olish (faqat frontendda, xavfsiz emas!)
-        if (token) {
-            const payload = JSON.parse(atob(token.split('.')[1]));
-            const username = payload.username || payload.user_id || 'Foydalanuvchi';
-            document.getElementById('username').innerText = username;
-        }
-    });
+        return true
+    }
 </script>
 
 
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const token = localStorage.getItem('access')
+        const currentPage = window.location.pathname
+
+        const exemptPages = ['/login/', '/register/']
+        if (!token && !exemptPages.includes(currentPage)) {
+            window.location.href = '/login/'
+        }
+
+        const userRole = localStorage.getItem('role')
+        if (userRole !== 'admin') {
+            document.querySelectorAll('.admin-only').forEach((el) => (el.style.display = 'none'))
+        }
+
+        const username = localStorage.getItem('username')
+        if (username) {
+            document.getElementById('user-info').innerHTML = `
+    <div class="d-flex align-items-center justify-content-end gap-3 py-2 px-3">
+      <div class="d-flex align-items-center gap-2">
+        <div class="rounded-circle bg-primary text-white d-flex justify-content-center align-items-center" style="width: 36px; height: 36px; font-size: 1rem;">
+          <i class="bi bi-person-fill"></i>
+        </div>
+        <span class="badge bg-light text-dark fw-semibold px-3 py-2 shadow-sm" style="font-size: large" >Xush kelibsiz, ${username}</span>
+      </div>
+      <button onclick="logout()" class="btn btn-outline-danger btn-sm px-3">
+        <i class="bi bi-box-arrow-right"></i> Chiqish
+      </button>
+    </div>
+  `
+        } else {
+            document.getElementById('user-info').innerHTML = `
+    <div class="text-end px-3 py-2">
+      <a href="/login/" class="btn btn-primary btn-sm">
+        <i class="bi bi-box-arrow-in-right"></i> Kirish
+      </a>
+    </div>
+  `
+        }
+
+    })
+
+    function logout() {
+        localStorage.clear()
+        window.location.href = '/login/'
+    }
+
+    async function fetchWithAuth(url, options = {}) {
+        const access = localStorage.getItem('access')
+        const refresh = localStorage.getItem('refresh')
+
+        let response = await fetch(url, {
+            ...options,
+            headers: {
+                ...options.headers,
+                Authorization: 'Bearer ' + access,
+                'Content-Type': 'application/json'
+            }
+        })
+
+        if (response.status === 401 && refresh) {
+            const refreshRes = await fetch('/api/token/refresh/', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({refresh})
+            })
+
+            if (refreshRes.ok) {
+                const data = await refreshRes.json()
+                localStorage.setItem('access', data.access)
+                response = await fetch(url, {
+                    ...options,
+                    headers: {
+                        ...options.headers,
+                        Authorization: 'Bearer ' + data.access,
+                        'Content-Type': 'application/json'
+                    }
+                })
+            } else {
+                alert('Sessiya tugagan. Qayta kiring.')
+                window.location.href = '/login/'
+            }
+        }
+
+        return response
+    }
+</script>
 </body>
 </html>

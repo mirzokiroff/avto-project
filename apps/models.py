@@ -1,4 +1,4 @@
-from django.contrib.auth.models import AbstractUser, BaseUserManager
+from django.contrib.auth.models import AbstractUser, BaseUserManager, PermissionsMixin
 from django.db import models
 from django.utils import timezone
 from django.utils.translation import gettext_lazy as _
@@ -8,8 +8,8 @@ from config import settings
 
 
 class TimeStampedModel(models.Model):
-    created_at = models.DateTimeField(_("Yaratilgan vaqti"), auto_now_add=True)
-    updated_at = models.DateTimeField(_("Yangilangan vaqti"), auto_now=True)
+    entry_time = models.DateTimeField(_("Kirgan vaqti"), auto_now_add=True)
+    exit_time = models.DateTimeField(_("Chiqqan vaqti"), auto_now=True)
 
     class Meta:
         abstract = True
@@ -25,18 +25,27 @@ class CustomUserManager(BaseUserManager):
         return user
 
     def create_superuser(self, username, password, **extra_fields):
-        extra_fields.setdefault('is_staff', True)
-        extra_fields.setdefault('is_superuser', True)
+        extra_fields.setdefault("is_staff", True)
+        extra_fields.setdefault("is_superuser", True)
         return self.create_user(username, password, **extra_fields)
 
 
-class CustomUser(AbstractUser, TimeStampedModel):
+class CustomUser(AbstractUser, TimeStampedModel, PermissionsMixin):
+    username = models.CharField(max_length=150, unique=True)
     full_name = models.CharField(_("To'liq ism"), max_length=100)
-    phone = models.CharField(_("Telefon raqam"), max_length=13, validators=[validate_phone_number], unique=True,
-                             null=True, blank=True)
+    phone = models.CharField(
+        _("Telefon raqam"),
+        max_length=13,
+        validators=[validate_phone_number],
+        unique=True,
+        null=True,
+        blank=True,
+    )
 
-    is_admin = models.BooleanField(_("Adminmi?"), default=False)
-    is_guard = models.BooleanField(_("Qorovulmi?"), default=False)
+    is_active = models.BooleanField(default=True)
+    is_staff = models.BooleanField(default=False)
+    is_superuser = models.BooleanField(default=False)
+    date_joined = models.DateTimeField(auto_now_add=True)
 
     # Ushbu qatorni o'zgartiramiz:
     USERNAME_FIELD = "username"  # username orqali login qilish
@@ -49,22 +58,25 @@ class CustomUser(AbstractUser, TimeStampedModel):
 
 
 class Vehicle(TimeStampedModel):
-    plate_number = models.CharField(_("Davlat raqami"), max_length=20, unique=True)
+    area = models.ForeignKey("apps.Area", on_delete=models.PROTECT)
+    plate_number = models.CharField(
+        _("Davlat raqami"), max_length=20, null=False, blank=False
+    )
     owner_name = models.CharField(_("Egasining ismi"), max_length=255, blank=True)
-    is_evacuator = models.BooleanField(_("Evakuatormi?"), default=False)
-    is_whitelisted = models.BooleanField(_("Doimiy kiruvchi (ruxsatli)"), default=False)
-
-    def should_open_barrier(self):
-        return self.is_whitelisted or self.is_evacuator
+    no_plate_number = models.BooleanField(default=False)
 
     def __str__(self):
         return self.plate_number
 
+    def save(self, *args, **kwargs):
+        self.plate_number = self.plate_number.strip().upper()
+        super().save(*args, **kwargs)
+
 
 class Camera(TimeStampedModel):
     BARRIER_TYPE = [
-        ('IN', 'Kiruvchi'),
-        ('OUT', 'Chiquvchi'),
+        ("IN", "Kiruvchi"),
+        ("OUT", "Chiquvchi"),
     ]
     name = models.CharField(_("Nomi"), max_length=100)
     ip_address = models.GenericIPAddressField(_("IP manzili"))
@@ -79,27 +91,93 @@ class Camera(TimeStampedModel):
         return f"{self.name} - {self.type}"
 
 
-class EntryLog(TimeStampedModel):
-    vehicle = models.ForeignKey("Vehicle", on_delete=models.CASCADE)
-    photo = models.ImageField(_("Kirish rasmi"), upload_to='entry_photos/')
-    entry_time = models.DateTimeField(_("Kirish vaqti"), default=timezone.now)
-    is_manual = models.BooleanField(_("Qo'lda kiritilganmi?"), default=False)
-    entry_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True)
+class Entry(TimeStampedModel):
+    area = models.ForeignKey("apps.Area", on_delete=models.PROTECT)
+    vehicle = models.ForeignKey(
+        "apps.Vehicle",
+        on_delete=models.CASCADE,
+        related_name="entries",
+        null=True,
+        blank=True,
+    )
+    plate_number = models.CharField(max_length=30, null=True, blank=True)
+    no_plate_number = models.BooleanField(default=False)
+    yard_fee_paid = models.BooleanField(default=False)
+    fine_paid = models.BooleanField(default=False)
+
+    photo_front = models.ImageField(upload_to="entries/front/", null=True, blank=True)
+    photo_rear = models.ImageField(upload_to="entries/rear/", null=True, blank=True)
+    photo_left = models.ImageField(upload_to="entries/left/", null=True, blank=True)
+    photo_right = models.ImageField(upload_to="entries/right/", null=True, blank=True)
+
+    is_manual = models.BooleanField(default=False)
+    timestamp = models.DateTimeField(auto_now_add=True)
+
+    def save(self, *args, **kwargs):
+        if not self.vehicle:
+            area = self.area  # Entry'dan avtomatik olamiz
+
+            if self.no_plate_number:
+                temp_vehicle = Vehicle.objects.create(
+                    plate_number="",
+                    no_plate_number=True,
+                    area=area
+                )
+                temp_vehicle.plate_number = f"DAVLAT RAQAMISIZ-{temp_vehicle.id}"
+                temp_vehicle.save()
+
+                self.plate_number = temp_vehicle.plate_number
+                self.vehicle = temp_vehicle
+
+            elif self.plate_number:
+                self.plate_number = self.plate_number.strip().upper()
+                vehicle, created = Vehicle.objects.get_or_create(
+                    plate_number=self.plate_number,
+                    defaults={"no_plate_number": False, "area": area}
+                )
+                self.vehicle = vehicle
+
+        super().save(*args, **kwargs)
 
     def __str__(self):
-        return f"{self.vehicle.plate_number} kirgan - {self.entry_time}"
+        return self.plate_number or "Nomaʼlum transport"
 
 
-class ExitLog(TimeStampedModel):
-    vehicle = models.ForeignKey("Vehicle", on_delete=models.CASCADE)
-    photo = models.ImageField(_("Chiqish rasmi"), upload_to='exit_photos/')
-    exit_time = models.DateTimeField(_("Chiqish vaqti"), default=timezone.now)
-    paid_amount = models.DecimalField(_("To'langan summa"), max_digits=10, decimal_places=2)
-    approved_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True)
-    receipt = models.FileField(_("Kvitansiya fayli"), upload_to='receipts/', null=True, blank=True)
+class ExitLog(models.Model):
+    area = models.ForeignKey("apps.Area", on_delete=models.PROTECT)
+    vehicle = models.ForeignKey(Vehicle, on_delete=models.CASCADE)
+    entry = models.ForeignKey(Entry, on_delete=models.CASCADE, related_name="exit")
+    timestamp = models.DateTimeField(auto_now_add=True)
+    is_manual_entry = models.BooleanField(default=False)
+    is_manual_exit = models.BooleanField(default=False)
+    photo_front_exit = models.ImageField(
+        upload_to="exits/front/", null=True, blank=True
+    )
+    photo_rear_exit = models.ImageField(upload_to="exits/rear/", null=True, blank=True)
+    photo_left_exit = models.ImageField(upload_to="exits/left/", null=True, blank=True)
+    photo_right_exit = models.ImageField(
+        upload_to="exits/right/", null=True, blank=True
+    )
+    yard_fee_paid = models.BooleanField(default=False)
+    total_minutes = models.PositiveIntegerField(default=0)
+
+    def calculate_yard_fee(self):
+        entry_time = self.entry.timestamp
+        exit_time = self.timestamp
+        area = self.entry.vehicle.area
+
+        if not area or not area.daily_fee:
+            return 0
+
+        duration = exit_time - entry_time
+        total_days = int(duration.total_seconds() / 86400)
+        if duration.total_seconds() % 86400 > 0:
+            total_days += 1
+
+        return total_days * area.daily_fee
 
     def __str__(self):
-        return f"{self.vehicle.plate_number} chiqqan - {self.exit_time}"
+        return f"{self.vehicle.plate_number or 'Davlat raqamisiz'} chiqdi"
 
 
 class FineStatus(TimeStampedModel):
@@ -112,33 +190,22 @@ class FineStatus(TimeStampedModel):
 
 
 class Area(TimeStampedModel):
-    area_id = models.IntegerField()
+    area_id = models.IntegerField(unique=True)
+    daily_fee = models.PositiveIntegerField(default=10000, help_text="1 kunlik jarima maydon to‘lovi (so‘mda)")
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
-        return str(self.area_id)
+        return f"Maydon {self.area_id}"
 
 
 class ExceptionalTransports(TimeStampedModel):
     plate_number = models.CharField(_("Davlat raqami"), max_length=20, unique=True)
-    owner_name = models.CharField(_("Egasining ismi"), max_length=255, blank=True)
+    owner_name = models.CharField(
+        _("Egasining ismi"), max_length=255, blank=True, null=True
+    )
+    phone_number = models.CharField(
+        _("Telefon raqami"), max_length=20, blank=True, null=True
+    )
 
     def __str__(self):
         return self.plate_number
-
-
-class Entry(TimeStampedModel):
-    plate_number = models.CharField(max_length=15)
-    photo = models.ImageField(upload_to='entries/')
-    is_manual = models.BooleanField(default=False)
-    timestamp = models.DateTimeField(auto_now_add=True)
-
-    def save(self, *args, **kwargs):
-        vehicle, created = Vehicle.objects.get_or_create(plate_number=self.plate_number)
-        if created:
-            vehicle.owner_name = ""
-            vehicle.save()
-        super().save(*args, **kwargs)
-
-        self.plate_number = self.plate_number.strip().upper()
-

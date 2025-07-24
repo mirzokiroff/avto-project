@@ -1,0 +1,324 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Chiqish Formasi{% endblock %}
+
+{% block content %}
+    <div class="text-center mb-5">
+        <h1 class="fw-bold">Mashina chiqishini ro'yxatdan o'tkazish</h1>
+        <p class="text-muted">Mashina raqamini kiriting va kirish maʼlumotlarini tekshiring:</p>
+    </div>
+
+    <style>
+        .photo-upload {
+            border: 2px dashed #ced4da;
+            border-radius: 12px;
+            padding: 20px;
+            height: 200px;
+            background-color: #f8f9fa;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            transition: all 0.3s ease-in-out;
+            cursor: pointer;
+            position: relative;
+            text-align: center;
+        }
+
+        .photo-upload:hover {
+            background-color: #e9f5ff;
+            border-color: #0d6efd;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(13, 110, 253, 0.2);
+        }
+
+        .photo-upload input[type='file'] {
+            display: none;
+        }
+
+        .photo-preview {
+            display: none;
+            max-width: 100%;
+            max-height: 100px;
+            margin-top: 10px;
+            border-radius: 6px;
+            object-fit: cover;
+        }
+
+        .photo-label-text {
+            margin-top: 10px;
+            font-weight: 500;
+        }
+
+        .upload-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+            gap: 1.5rem;
+        }
+
+        .plate-wrapper {
+            max-width: 500px;
+            margin: 0 auto 20px;
+        }
+
+        .uz-plate {
+            display: flex;
+            background: #fff;
+            border: 3px solid black;
+            border-radius: 12px;
+            width: 100%;
+            height: 90px;
+            overflow: hidden;
+        }
+
+        .plate-region {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 70px;
+            font-size: 32px;
+            font-weight: bold;
+            border-right: 3px solid black;
+        }
+
+        .plate-main {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 0 10px;
+        }
+
+        .plate-main input {
+            font-size: 32px;
+            font-weight: bold;
+            text-transform: uppercase;
+            border: none;
+            outline: none;
+            width: 100%;
+            max-width: 220px;
+            text-align: center;
+            background: transparent;
+        }
+
+        .plate-right {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            border-left: 3px solid black;
+            padding: 5px;
+            width: 70px;
+        }
+
+        .plate-right img {
+            height: 20px;
+            margin-bottom: 5px;
+        }
+
+        .plate-right span {
+            font-size: 18px;
+            font-weight: bold;
+            color: #0044cc;
+        }
+
+        .entry-photos img {
+            width: 100%;
+            height: 120px;
+            object-fit: cover;
+            border-radius: 8px;
+            border: 1px solid #ddd;
+        }
+    </style>
+
+    <div class="plate-wrapper mb-3">
+        <div class="uz-plate">
+            <div class="plate-region">
+                <input id="exitRegionCode" type="text" maxlength="2" placeholder="01"
+                       oninput="this.value = this.value.replace(/[^0-9]/g, ''); moveToExitPlate(this)"
+                       style="font-size: 32px; font-weight: bold; text-align: center; border: none; outline: none; width: 50px;">
+            </div>
+            <div class="plate-main">
+                <input id="exitPlateNumber" type="text" maxlength="6" placeholder="A123AA"
+                       oninput="sanitizeInput(this)" onkeypress="handleExitEnter(event)">
+            </div>
+            <div class="plate-right">
+                <img src="/media/uzb-flag.jpg" alt="UZ">
+                <span>UZ</span>
+            </div>
+        </div>
+    </div>
+    <div class="text-center mb-4">
+        <button class="btn btn-primary btn-lg px-5" onclick="fetchEntryDetails()">
+            <i class="bi bi-search"></i> Qidirish
+        </button>
+    </div>
+    <input type="hidden" name="is_manual_exit" value="true">
+
+
+    <!-- Natija va chiqish formasi -->
+    <div id="exitResultContainer" class="container mt-4" style="display: none;"></div>
+
+    <script>
+        const token = localStorage.getItem('access');
+        if (!token) {
+            window.location.href = "/login/";
+        }
+
+        function sanitizeInput(input) {
+            input.value = input.value.toUpperCase().replace(/[^0-9A-Z]/g, '');
+        }
+
+        function handleExitEnter(event) {
+            if (event.key === "Enter") {
+                fetchEntryDetails();
+            }
+        }
+
+        function moveToExitPlate(el) {
+            if (el.value.length === 2) {
+                document.getElementById("exitPlateNumber").focus();
+            }
+        }
+
+        function previewPhoto(input, previewId) {
+            const file = input.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function (e) {
+                    const img = document.getElementById(previewId);
+                    img.src = e.target.result;
+                    img.style.display = "block";
+                };
+                reader.readAsDataURL(file);
+            }
+        }
+
+        function fetchEntryDetails() {
+            const region = document.getElementById("exitRegionCode").value.trim();
+            const plate = document.getElementById("exitPlateNumber").value.trim().toUpperCase();
+            if (!region || !plate || plate.length < 4) {
+                alert("Iltimos, to‘g‘ri raqam kiriting!");
+                return;
+            }
+
+            const fullPlate = region + plate;
+            fetch(`/api/entries/?search=${fullPlate}`, {
+                headers: {'Authorization': `Bearer ${token}`}
+            })
+                .then(res => res.json())
+                .then(data => {
+                    if (data.length === 0) {
+                        document.getElementById("exitResultContainer").innerHTML =
+                            `<div class="alert alert-danger text-center">Ushbu raqam uchun maʼlumot </div>`;
+                        document.getElementById("exitResultContainer").style.display = "block";
+                        return;
+                    }
+
+                    const vehicle = data[0];
+                    const entryTime = new Date(vehicle.timestamp);
+                    const now = new Date();
+                    const minutes = Math.floor((now - entryTime) / (1000 * 60));
+                    let days = Math.ceil(minutes / (60 * 24));
+                    if (days < 1) days = 1;
+
+                    const photos = `
+                    <div class="row entry-photos mt-3">
+                        <div class="col-3"><img src="${vehicle.photo_front || ''}" alt="Oldi"></div>
+                        <div class="col-3"><img src="${vehicle.photo_rear || ''}" alt="Orqa"></div>
+                        <div class="col-3"><img src="${vehicle.photo_left || ''}" alt="Chap"></div>
+                        <div class="col-3"><img src="${vehicle.photo_right || ''}" alt="O'ng"></div>
+                    </div>
+                `;
+
+                    document.getElementById("exitResultContainer").innerHTML = `
+                    <div class="card shadow p-3">
+                        <h4>🚘 Mashina ma'lumotlari</h4>
+                        <p><strong>Raqam:</strong> ${vehicle.plate_number}</p>
+                        <p><strong>Kirgan vaqti:</strong> ${entryTime.toLocaleString('uz-UZ')}</p>
+                        <p><strong>Vaqt o'tgan:</strong> ${days} sutka</p>
+                        ${photos}
+                        <hr>
+                        <h5>Chiqish fotosuratlarini yuklash</h5>
+                        <form id="exitForm" enctype="multipart/form-data">
+                            <div class="upload-container">
+                                ${createPhotoInput('exit_photo_front', 'Oldi', 'exit_preview_front')}
+                                ${createPhotoInput('exit_photo_rear', 'Orqa', 'exit_preview_rear')}
+                                ${createPhotoInput('exit_photo_left', 'Chap', 'exit_preview_left')}
+                                ${createPhotoInput('exit_photo_right', "O'ng", 'exit_preview_right')}
+                            </div>
+                            <div class="form-check my-2">
+                                <input class="form-check-input" type="checkbox" id="yardPaymentCheck">
+                                <label class="form-check-label fw-bold" for="yardPaymentCheck">
+                                    Maydon uchun to‘lov qabul qilindi
+                                </label>
+                            </div>
+                            <div class="alert alert-info py-2">Jarimalar to‘langanligi: <strong>✅ Tasdiqlandi</strong></div>
+                            <button id="exitConfirmBtn" type="button" class="btn btn-success" onclick="submitExit(${vehicle.id})" disabled>
+                                ✅ Chiqishni tasdiqlash
+                            </button>
+                        </form>
+                    </div>
+                `;
+                    document.getElementById("exitResultContainer").style.display = "block";
+                    initExitFormValidation();
+                })
+                .catch(err => console.error("Chiqarish maʼlumotlarini olishda xatolik:", err));
+        }
+
+        function createPhotoInput(name, label, previewId) {
+            return `
+<label class="photo-upload">
+    <input type="file" name="${name}" required onchange="previewPhoto(this, '${previewId}')">
+    <div class="photo-icon">
+        <!-- Old tomoni -->
+        <i class="bi bi-plus-square-dotted" style="font-size: 4rem; color: gray;"></i>
+    </div>
+    <div class="photo-label-text">${label}</div>
+    <img id="${previewId}" class="photo-preview" alt="${label} preview">
+</label>
+
+        `;
+        }
+
+        function initExitFormValidation() {
+            const confirmBtn = document.getElementById('exitConfirmBtn');
+            const yardPayment = document.getElementById('yardPaymentCheck');
+            const form = document.getElementById('exitForm');
+            const inputs = form.querySelectorAll('input[type="file"]');
+
+            function checkForm() {
+                const allFilled = Array.from(inputs).every(input => input.files.length > 0);
+                confirmBtn.disabled = !(yardPayment.checked && allFilled);
+            }
+
+            yardPayment.addEventListener('change', checkForm);
+            inputs.forEach(input => input.addEventListener('change', checkForm));
+        }
+
+        function submitExit(entryId) {
+            const form = document.getElementById('exitForm');
+            const formData = new FormData(form);
+            formData.append('entry', entryId);
+
+            const yardPayment = document.getElementById('yardPaymentCheck');
+            formData.append('yard_fee_paid', yardPayment.checked ? 'true' : 'false');
+
+            fetch('/api/exits/', {
+                method: 'POST',
+                headers: {'Authorization': `Bearer ${token}`},
+                body: formData
+            })
+                .then(res => {
+                    if (res.ok) {
+                        alert("Chiqish muvaffaqiyatli ro'yxatdan o'tkazildi!");
+                        window.location.reload();
+                    } else {
+                        alert("Xatolik yuz berdi!");
+                    }
+                })
+                .catch(err => console.error("Exit yuborishda xatolik:", err));
+        }
+    </script>
+{% endblock %}
