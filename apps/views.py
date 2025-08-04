@@ -1,17 +1,21 @@
+from django.conf import settings
+import xml.etree.ElementTree as ET
 from django.contrib.auth.decorators import login_required
 from django.shortcuts import render
+from datetime import timedelta
 from django.utils import timezone
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import viewsets, status, filters
 from rest_framework.decorators import action
 from rest_framework.parsers import MultiPartParser, FormParser
-from rest_framework.permissions import IsAuthenticated
+from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework_simplejwt.views import TokenObtainPairView
 
 from .permissions import IsAdminOrReadOnly
 from .serializers import *
+from .utils.yhxbb_api import YHXBB
 
 
 class VehicleViewSet(viewsets.ModelViewSet):
@@ -240,3 +244,148 @@ class DRBReadAPIView(APIView):
         # Bu yerda DRB kameradan OCR o‘qish logikasi bo‘ladi
         # Hozircha test uchun random qiymat
         return Response({"plate_number": "30A123AA"})
+
+
+# Camera In DRB view
+class VehicleINANPRView(APIView):
+    parser_classes = [MultiPartParser, FormParser]
+
+    def post(self, request, *args, **kwargs):
+        ip_address = request.META.get("REMOTE_ADDR")
+        if getattr(settings, "ALLOWED_CAMERA_IPS", None):
+            if ip_address.split(",")[0] not in settings.ALLOWED_CAMERA_IPS:
+                return Response({"error": "Unauthorized IP"}, status=401)
+            
+        xml_file = request.FILES.get('anpr.xml')
+        if not xml_file:
+            return Response({'error': 'XML file not found'}, status=400)
+
+        try:
+            xml_content = xml_file.read()
+            root = ET.fromstring(xml_content)
+
+            plate = root.findtext('.//licensePlate') or None
+            detection_pic_node = root.find('.//pictureInfoList/pictureInfo/fileName')
+            detection_pic_name = detection_pic_node.text if detection_pic_node is not None else None
+
+        except ET.ParseError as e:
+            return Response({'error': f'XML parse error: {str(e)}'}, status=400)
+
+        detection_image = request.FILES.get(detection_pic_name) if detection_pic_name else None
+
+        if not plate or not detection_image:
+            return Response({'error': 'Plate number or detection image not found'}, status=400)
+
+        if ExceptionalTransports.objects.filter(plate_number=plate).exists():
+            return Response({"message": "This number is in the whitelist. Barrier opened."}, status=200)
+
+        area = Area.objects.first()
+        if not area:
+            return Response({"error": "No Area found. Please configure Area first."}, status=400)
+
+        yhxbb = YHXBB(area_id=area.area_id)
+        try:
+            api_response = yhxbb.car_entry(plate_number=plate, image_file=detection_image)
+        except Exception as e:
+            return Response({"error": f"YHXBB API call failed: {str(e)}"}, status=400)
+
+        if api_response:
+            area = Area.objects.first()
+            vehicle = Vehicle.objects.create(area=area, plate_number=plate)
+            plate_instance = Entry.objects.create(area=area, plate_number=plate, vehicle=vehicle, photo_front=detection_image)
+            return Response({"id": plate_instance.id, "status": True, "plate_number": plate_instance.plate_number, "created_at": plate_instance.entry_time}, status=201)
+
+        return Response({"error": "YHXBB API did not return success"}, status=400)
+
+
+# Camera plate Out
+class VehicleOutANPRView(APIView):
+    parser_classes = [MultiPartParser, FormParser]
+
+    def post(self, request, *args, **kwargs):
+        ip_address = request.META.get("REMOTE_ADDR")
+        if getattr(settings, "ALLOWED_CAMERA_IPS", None):
+            if ip_address.split(",")[0] not in settings.ALLOWED_CAMERA_IPS:
+                return Response({"error": "Unauthorized IP"}, status=401)
+            
+        xml_file = request.FILES.get('anpr.xml')
+        if not xml_file:
+            return Response({'error': 'XML file not found'}, status=400)
+
+        try:
+            xml_content = xml_file.read()
+            root = ET.fromstring(xml_content)
+
+            plate = root.findtext('.//licensePlate') or None
+            detection_pic_node = root.find('.//pictureInfoList/pictureInfo/fileName')
+            detection_pic_name = detection_pic_node.text if detection_pic_node is not None else None
+
+        except ET.ParseError as e:
+            return Response({'error': f'XML parse error: {str(e)}'}, status=400)
+
+        detection_image = request.FILES.get(detection_pic_name) if detection_pic_name else None
+
+        if not plate or not detection_image:
+            return Response({'error': 'Plate number or detection image not found'}, status=400)
+
+        if ExceptionalTransports.objects.filter(plate_number=plate).exists():
+            return Response({"message": "This number is in the whitelist. Barrier opened."}, status=200)
+
+        plate_instance = Vehicle.objects.filter(plate_number=plate).first()
+        if not plate_instance:
+            return Response({"error": "Plate number not found in database"}, status=400)
+        
+        area = Area.objects.first()
+        if not area:
+            return Response({"error": "No Area found. Please configure Area first."}, status=400)
+
+        yhxbb = YHXBB(area_id=area.area_id)
+        try:
+            api_response = yhxbb.car_exit(plate_number=plate, image_file=detection_image)
+        except Exception as e:
+            return Response({"error": f"YHXBB API call failed: {str(e)}"}, status=400)
+
+        if api_response:
+            entry_log = Entry.objects.filter(plate_number=plate_instance.plate_number)
+            if entry_log:
+                exit_log = ExitLog.objects.create(area=area, vehicle=plate_instance, entry=entry_log, photo_front_exit=detection_image)
+                return Response({"id": exit_log.id, "status": True, "plate_number": plate_instance.plate_number, "entry_time": entry_log.timestamp, "exit_time": exit_log.timestamp}, status=201)
+            else:
+                return Response({"message": "The car with this number did not enter the penalty area."}, status=400)
+        return Response({"error": "YHXBB API did not return success"}, status=400)
+
+
+# Statistic APIView
+class FullEntryExitStatisticsAPIView(APIView):
+    permission_classes = [AllowAny]
+
+    def get_time_range_data(self, start_date):
+        now = timezone.now()
+
+        entries = Entry.objects.filter(timestamp__date__gte=start_date)
+        exits = ExitLog.objects.filter(timestamp__date__gte=start_date)
+
+        active_entries = entries.exclude(id__in=ExitLog.objects.values_list('entry_id', flat=True))
+
+        return {
+            "entries": EntrySerializer(entries, many=True).data,
+            "exits": ExitLogSerializer(exits, many=True).data,
+            "active_vehicles": EntrySerializer(active_entries, many=True).data
+        }
+
+    def get(self, request):
+        today = timezone.localdate()
+        start_of_week = today - timedelta(days=today.weekday())
+        start_of_month = today.replace(day=1)
+        start_of_year = today.replace(month=1, day=1)
+        all_time_start = timezone.datetime(2000, 1, 1).date()
+
+        data = {
+            "daily": self.get_time_range_data(today),
+            "weekly": self.get_time_range_data(start_of_week),
+            "monthly": self.get_time_range_data(start_of_month),
+            "yearly": self.get_time_range_data(start_of_year),
+            "all_time": self.get_time_range_data(all_time_start)
+        }
+
+        return Response(data)

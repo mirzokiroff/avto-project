@@ -6,9 +6,9 @@ from dotenv import load_dotenv
 load_dotenv()
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-SECRET_KEY = os.getenv("SECRET_KEY")
+SECRET_KEY = os.getenv("SECRET_KEY", "hdbfkafkajfvhsdfvskjdfsdfg")
 
-DEBUG = os.getenv("DEBUG", False)
+DEBUG = os.getenv("DEBUG", True)
 
 ALLOWED_HOSTS = ["127.0.0.1"]
 
@@ -41,6 +41,7 @@ CORS_ALLOW_ALL_ORIGINS = True
 
 AUTH_USER_MODEL = 'apps.CustomUser'
 ROOT_URLCONF = 'config.urls'
+ALLOWED_CAMERA_IPS = []
 
 TEMPLATES = [
     {

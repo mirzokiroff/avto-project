@@ -4,7 +4,6 @@ from django.utils import timezone
 from django.utils.translation import gettext_lazy as _
 
 from apps.utils.validators import validate_phone_number
-from config import settings
 
 
 class TimeStampedModel(models.Model):
@@ -47,8 +46,7 @@ class CustomUser(AbstractUser, TimeStampedModel, PermissionsMixin):
     is_superuser = models.BooleanField(default=False)
     date_joined = models.DateTimeField(auto_now_add=True)
 
-    # Ushbu qatorni o'zgartiramiz:
-    USERNAME_FIELD = "username"  # username orqali login qilish
+    USERNAME_FIELD = "username"
     REQUIRED_FIELDS = ["full_name"]
 
     objects = CustomUserManager()
@@ -60,9 +58,8 @@ class CustomUser(AbstractUser, TimeStampedModel, PermissionsMixin):
 class Vehicle(TimeStampedModel):
     area = models.ForeignKey("apps.Area", on_delete=models.PROTECT)
     plate_number = models.CharField(
-        _("Davlat raqami"), max_length=20, null=False, blank=False
+        _("Davlat raqami"), max_length=20, null=True, blank=False
     )
-    owner_name = models.CharField(_("Egasining ismi"), max_length=255, blank=True)
     no_plate_number = models.BooleanField(default=False)
 
     def __str__(self):
@@ -71,24 +68,6 @@ class Vehicle(TimeStampedModel):
     def save(self, *args, **kwargs):
         self.plate_number = self.plate_number.strip().upper()
         super().save(*args, **kwargs)
-
-
-class Camera(TimeStampedModel):
-    BARRIER_TYPE = [
-        ("IN", "Kiruvchi"),
-        ("OUT", "Chiquvchi"),
-    ]
-    name = models.CharField(_("Nomi"), max_length=100)
-    ip_address = models.GenericIPAddressField(_("IP manzili"))
-    port = models.IntegerField(default=554)
-    username = models.CharField(_("Kamera login"), max_length=50)
-    password = models.CharField(_("Kamera parol"), max_length=120)
-    type = models.CharField(_("Turi"), max_length=3, choices=BARRIER_TYPE)
-    is_active = models.BooleanField(_("Faolligi"), default=True)
-    created_at = models.DateTimeField(_("Yaratilgan"), auto_now=True)
-
-    def __str__(self):
-        return f"{self.name} - {self.type}"
 
 
 class Entry(TimeStampedModel):
@@ -105,17 +84,17 @@ class Entry(TimeStampedModel):
     yard_fee_paid = models.BooleanField(default=False)
     fine_paid = models.BooleanField(default=False)
 
-    photo_front = models.ImageField(upload_to="entries/front/", null=True, blank=True)
-    photo_rear = models.ImageField(upload_to="entries/rear/", null=True, blank=True)
-    photo_left = models.ImageField(upload_to="entries/left/", null=True, blank=True)
-    photo_right = models.ImageField(upload_to="entries/right/", null=True, blank=True)
+    photo_front = models.ImageField(upload_to=f"entries/front/{timezone.localdate()}/", null=True, blank=True)
+    photo_rear = models.ImageField(upload_to=f"entries/rear/{timezone.localdate()}/", null=True, blank=True)
+    photo_left = models.ImageField(upload_to=f"entries/left/{timezone.localdate()}/", null=True, blank=True)
+    photo_right = models.ImageField(upload_to=f"entries/right/{timezone.localdate()}/", null=True, blank=True)
 
     is_manual = models.BooleanField(default=False)
     timestamp = models.DateTimeField(auto_now_add=True)
 
     def save(self, *args, **kwargs):
         if not self.vehicle:
-            area = self.area  # Entry'dan avtomatik olamiz
+            area = self.area
 
             if self.no_plate_number:
                 temp_vehicle = Vehicle.objects.create(
