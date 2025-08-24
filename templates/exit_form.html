@@ -13,8 +13,8 @@
         .photo-upload {
             border: 2px dashed #ced4da;
             border-radius: 12px;
-            padding: 20px;
-            height: 200px;
+            width: 160px;
+            height: 160px;
             background-color: #f8f9fa;
             display: flex;
             flex-direction: column;
@@ -23,6 +23,7 @@
             transition: all 0.3s ease-in-out;
             cursor: pointer;
             position: relative;
+            overflow: hidden;
             text-align: center;
         }
 
@@ -30,31 +31,34 @@
             background-color: #e9f5ff;
             border-color: #0d6efd;
             transform: translateY(-2px);
-            box-shadow: 0 4px 8px rgba(13, 110, 253, 0.2);
+            box-shadow: 0 4px 8px rgba(13, 110, 253, .2);
         }
 
-        .photo-upload input[type='file'] {
+        .photo-upload input[type="file"] {
             display: none;
         }
 
-        .photo-preview {
-            display: none;
-            max-width: 100%;
-            max-height: 100px;
-            margin-top: 10px;
-            border-radius: 6px;
+        /* ichidagi <img> har doim boxni to'ldirsin */
+        .photo-upload img {
+            position: absolute;
+            inset: 0;
+            width: 100%;
+            height: 100%;
             object-fit: cover;
+            display: none; /* fayl tanlangandan keyin ko'rsatiladi */
         }
 
         .photo-label-text {
-            margin-top: 10px;
             font-weight: 500;
+            font-size: 14px;
+            color: #555;
         }
 
         .upload-container {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
             gap: 1.5rem;
+            margin-top: 20px;
         }
 
         .plate-wrapper {
@@ -128,7 +132,7 @@
             height: 120px;
             object-fit: cover;
             border-radius: 8px;
-            border: 1px solid #ddd;
+            border: 1px solid deepskyblue;
         }
     </style>
 
@@ -249,7 +253,7 @@
                                 ${createPhotoInput('exit_photo_right', "O'ng", 'exit_preview_right')}
                             </div>
                             <div class="form-check my-2">
-                                <input class="form-check-input" type="checkbox" id="yardPaymentCheck">
+                                <input class="form-check-input" type="checkbox" id="yardPaymentCheck" style="border: 1px solid deepskyblue">
                                 <label class="form-check-label fw-bold" for="yardPaymentCheck">
                                     Maydon uchun to‘lov qabul qilindi
                                 </label>
@@ -269,17 +273,14 @@
 
         function createPhotoInput(name, label, previewId) {
             return `
-<label class="photo-upload">
-    <input type="file" name="${name}" required onchange="previewPhoto(this, '${previewId}')">
-    <div class="photo-icon">
-        <!-- Old tomoni -->
-        <i class="bi bi-plus-square-dotted" style="font-size: 4rem; color: gray;"></i>
-    </div>
-    <div class="photo-label-text">${label}</div>
-    <img id="${previewId}" class="photo-preview" alt="${label} preview">
-</label>
-
-        `;
+        <label class="photo-upload">
+          <input type="file" name="${name}" accept="image/*" required
+                 onchange="previewPhoto(this, '${previewId}')">
+          <i class="bi bi-plus-square-dotted" style="font-size:4rem; color:#9aa0a6;"></i>
+          <div class="photo-label-text">${label}</div>
+          <img id="${previewId}" alt="${label} preview" style="border: 1px solid deepskyblue">
+        </label>
+      `;
         }
 
         function initExitFormValidation() {

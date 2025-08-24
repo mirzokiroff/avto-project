@@ -111,10 +111,12 @@
         .photo-preview {
             display: none;
             max-width: 100%;
-            max-height: 100px;
+            max-height: 100%;
             margin-top: 10px;
             border-radius: 6px;
             object-fit: cover;
+            position: absolute;
+            border: 1px solid deepskyblue;
         }
 
         .photo-label-text {
@@ -291,10 +293,16 @@
             }
 
             try {
-                const response = await fetch("/api/entries/", {
-                    method: "POST",
+                const token = localStorage.getItem("access"); // 🔑 Token olish
+                if (!token) {
+                    alert("Iltimos, tizimga kiring (token yo‘q).");
+                    return;
+                }
+
+                const response = await fetch('/api/entries/', {   // ✅ entries ga yuboramiz
+                    method: 'POST',
                     headers: {
-                        "Authorization": "Bearer " + localStorage.getItem("access"),
+                        'Authorization': `Bearer ${token}`
                     },
                     body: formData
                 });
@@ -308,6 +316,7 @@
 
                 alert("Kirish muvaffaqiyatli saqlandi!");
                 window.location.reload();
+
             } catch (error) {
                 console.error(error);
                 alert("Serverga ulanishda xatolik!");

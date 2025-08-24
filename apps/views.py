@@ -4,6 +4,7 @@ from django.contrib.auth.decorators import login_required
 from django.shortcuts import render
 from datetime import timedelta
 from django.utils import timezone
+from django.utils.timezone import now
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import viewsets, status, filters
 from rest_framework.decorators import action
@@ -255,7 +256,7 @@ class VehicleINANPRView(APIView):
         if getattr(settings, "ALLOWED_CAMERA_IPS", None):
             if ip_address.split(",")[0] not in settings.ALLOWED_CAMERA_IPS:
                 return Response({"error": "Unauthorized IP"}, status=401)
-            
+
         xml_file = request.FILES.get('anpr.xml')
         if not xml_file:
             return Response({'error': 'XML file not found'}, status=400)
@@ -292,8 +293,10 @@ class VehicleINANPRView(APIView):
         if api_response:
             area = Area.objects.first()
             vehicle = Vehicle.objects.create(area=area, plate_number=plate)
-            plate_instance = Entry.objects.create(area=area, plate_number=plate, vehicle=vehicle, photo_front=detection_image)
-            return Response({"id": plate_instance.id, "status": True, "plate_number": plate_instance.plate_number, "created_at": plate_instance.entry_time}, status=201)
+            plate_instance = Entry.objects.create(area=area, plate_number=plate, vehicle=vehicle,
+                                                  photo_front=detection_image)
+            return Response({"id": plate_instance.id, "status": True, "plate_number": plate_instance.plate_number,
+                             "created_at": plate_instance.entry_time}, status=201)
 
         return Response({"error": "YHXBB API did not return success"}, status=400)
 
@@ -307,7 +310,7 @@ class VehicleOutANPRView(APIView):
         if getattr(settings, "ALLOWED_CAMERA_IPS", None):
             if ip_address.split(",")[0] not in settings.ALLOWED_CAMERA_IPS:
                 return Response({"error": "Unauthorized IP"}, status=401)
-            
+
         xml_file = request.FILES.get('anpr.xml')
         if not xml_file:
             return Response({'error': 'XML file not found'}, status=400)
@@ -334,7 +337,7 @@ class VehicleOutANPRView(APIView):
         plate_instance = Vehicle.objects.filter(plate_number=plate).first()
         if not plate_instance:
             return Response({"error": "Plate number not found in database"}, status=400)
-        
+
         area = Area.objects.first()
         if not area:
             return Response({"error": "No Area found. Please configure Area first."}, status=400)
@@ -348,44 +351,58 @@ class VehicleOutANPRView(APIView):
         if api_response:
             entry_log = Entry.objects.filter(plate_number=plate_instance.plate_number)
             if entry_log:
-                exit_log = ExitLog.objects.create(area=area, vehicle=plate_instance, entry=entry_log, photo_front_exit=detection_image)
-                return Response({"id": exit_log.id, "status": True, "plate_number": plate_instance.plate_number, "entry_time": entry_log.timestamp, "exit_time": exit_log.timestamp}, status=201)
+                exit_log = ExitLog.objects.create(area=area, vehicle=plate_instance, entry=entry_log,
+                                                  photo_front_exit=detection_image)
+                return Response({"id": exit_log.id, "status": True, "plate_number": plate_instance.plate_number,
+                                 "entry_time": entry_log.timestamp, "exit_time": exit_log.timestamp}, status=201)
             else:
                 return Response({"message": "The car with this number did not enter the penalty area."}, status=400)
         return Response({"error": "YHXBB API did not return success"}, status=400)
 
 
-# Statistic APIView
 class FullEntryExitStatisticsAPIView(APIView):
     permission_classes = [AllowAny]
+    def get(self, request, *args, **kwargs):
+        try:
+            date_range = request.query_params.get("date_range", "all_time")
+            data_type = request.query_params.get("type", "all")
 
-    def get_time_range_data(self, start_date):
-        now = timezone.now()
+            today = now().date()
 
-        entries = Entry.objects.filter(timestamp__date__gte=start_date)
-        exits = ExitLog.objects.filter(timestamp__date__gte=start_date)
+            if date_range == "daily":
+                start_date = today
+            elif date_range == "weekly":
+                start_date = today - timedelta(days=7)
+            elif date_range == "monthly":
+                start_date = today - timedelta(days=30)
+            elif date_range == "yearly":
+                start_date = today - timedelta(days=365)
+            else:
+                start_date = None
 
-        active_entries = entries.exclude(id__in=ExitLog.objects.values_list('entry_id', flat=True))
+            # Kirganlar
+            entries = Entry.objects.all()
+            if start_date:
+                entries = entries.filter(timestamp__date__gte=start_date)
 
-        return {
-            "entries": EntrySerializer(entries, many=True).data,
-            "exits": ExitLogSerializer(exits, many=True).data,
-            "active_vehicles": EntrySerializer(active_entries, many=True).data
-        }
+            # Chiqqanlar
+            exits = ExitLog.objects.all()
+            if start_date:
+                exits = exits.filter(timestamp__date__gte=start_date)
 
-    def get(self, request):
-        today = timezone.localdate()
-        start_of_week = today - timedelta(days=today.weekday())
-        start_of_month = today.replace(day=1)
-        start_of_year = today.replace(month=1, day=1)
-        all_time_start = timezone.datetime(2000, 1, 1).date()
+            # Faqat kirgan yoki chiqqanlarni tanlash
+            if data_type == "entries":
+                exits = ExitLog.objects.none()
+            elif data_type == "exits":
+                entries = Entry.objects.none()
 
-        data = {
-            "daily": self.get_time_range_data(today),
-            "weekly": self.get_time_range_data(start_of_week),
-            "monthly": self.get_time_range_data(start_of_month),
-            "yearly": self.get_time_range_data(start_of_year),
-            "all_time": self.get_time_range_data(all_time_start)
-        }
+            entry_data = EntrySerializer(entries, many=True, context={"request": request}).data
+            exit_data = ExitLogSerializer(exits, many=True, context={"request": request}).data
 
-        return Response(data)
+            return Response({
+                "entries": entry_data,
+                "exits": exit_data
+            })
+
+        except Exception as e:
+            return Response({"error": f"Hisobotni olishda xatolik yuz berdi: {str(e)}"}, status=400)

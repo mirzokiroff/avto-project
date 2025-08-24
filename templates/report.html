@@ -1,10 +1,120 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <title>Title</title>
-</head>
-<body>
+{% extends "base.html" %}
+{% block content %}
+    <div class="container mt-4">
+        <h2 class="mb-3">Mashina Kirish/Chiqish Hisobotlari</h2>
 
-</body>
-</html>
+        <div class="row mb-3">
+            <div class="col-md-4">
+                <label for="period" class="form-label">Davr tanlang:</label>
+                <select id="period" class="form-select">
+                    <option value="daily">Kunlik</option>
+                    <option value="weekly">Haftalik</option>
+                    <option value="monthly">Oylik</option>
+                    <option value="yearly">Yillik</option>
+                    <option value="all_time" selected>Barchasi</option>
+                </select>
+            </div>
+            <div class="col-md-4">
+                <label for="type" class="form-label">Ma'lumot turi:</label>
+                <select id="type" class="form-select">
+                    <option value="all" selected>Barchasi</option>
+                    <option value="entries">Faqat kirganlar</option>
+                    <option value="exits">Faqat chiqqanlar</option>
+                </select>
+            </div>
+            <div class="col-md-4 d-flex align-items-end">
+                <button id="filter-button" class="btn btn-primary w-100">Filtrlash</button>
+            </div>
+        </div>
+
+        <div id="report-results" class="mt-4">
+            <p>Natijalar bu yerda chiqadi...</p>
+        </div>
+    </div>
+
+    <script>
+        document.getElementById("filter-button").addEventListener("click", function () {
+            let period = document.getElementById("period").value;
+            let type = document.getElementById("type").value;
+
+            fetch(`/api/statistics/full/?date_range=${period}&type=${type}`)
+                .then(response => response.json())
+                .then(data => {
+                    let resultsDiv = document.getElementById("report-results");
+                    resultsDiv.innerHTML = "";
+
+                    if (data.error) {
+                        resultsDiv.innerHTML = `<div class="alert alert-danger">${data.error}</div>`;
+                        return;
+                    }
+
+                    function generateTable(title, rows, isEntry = true) {
+                        let html = `
+        <div class="card mb-4">
+            <div class="card-header ${isEntry ? 'bg-success' : 'bg-danger'} text-white">
+                ${title}
+            </div>
+            <div class="table-responsive">
+                <table class="table table-bordered table-striped mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th>#</th>
+                            <th>Raqami</th>
+                            <th>Kirish vaqti</th>
+                            <th>Chiqish vaqti</th>
+                            <th>Maydonda qolgan vaqt</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+    `;
+                        rows.forEach((row, index) => {
+                            let duration = "-";
+                            if (row.entry_time && row.timestamp) {
+                                let entry = new Date(row.entry_time);
+                                let exit = new Date(row.timestamp);
+                                let diffMs = exit - entry;
+                                let diffDays = diffMs / (1000 * 60 * 60 * 24);
+                                duration = Math.ceil(diffDays) + " sutka";
+                            }
+                            html += `
+            <tr>
+                <td>${index + 1}</td>
+                <td>${isEntry ? row.plate_number : row.vehicle_plate_number}</td>
+                <td>${row.entry_time || row.timestamp || '-'}</td>
+                <td>${row.timestamp || '-'}</td>
+                <td>${duration}</td>
+            </tr>
+        `;
+                        });
+                        html += `
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    `;
+                        return html;
+                    }
+
+
+                    // Kirgan mashinalar
+                    if (data.entries && data.entries.length > 0) {
+                        resultsDiv.innerHTML += generateTable("KIRGAN MASHINALAR", data.entries, true);
+                    }
+
+                    // Chiqqan mashinalar
+                    if (data.exits && data.exits.length > 0) {
+                        resultsDiv.innerHTML += generateTable("CHIQGAN MASHINALAR", data.exits, false);
+                    }
+
+                    if ((!data.entries || data.entries.length === 0) &&
+                        (!data.exits || data.exits.length === 0)) {
+                        resultsDiv.innerHTML = `<div class="alert alert-info">Tanlangan davrda hech qanday ma’lumot topilmadi.</div>`;
+                    }
+                })
+                .catch(error => {
+                    document.getElementById("report-results").innerHTML =
+                        `<div class="alert alert-danger">Hisobotni olishda xatolik yuz berdi: ${error}</div>`;
+                });
+        });
+    </script>
+{% endblock %}

@@ -33,7 +33,9 @@ class VehicleSerializer(serializers.ModelSerializer):
         latest_entry = obj.entries.order_by("-timestamp").first()
         request = self.context.get("request")
         if latest_entry and latest_entry.photo_front:
-            return request.build_absolute_uri(latest_entry.photo_front.url)
+            if request:
+                return request.build_absolute_uri(latest_entry.photo_front.url)
+            return latest_entry.photo_front.url  # Agar request bo‘lmasa faqat nisbiy URL
         return None
 
 
@@ -155,8 +157,7 @@ class EntrySerializer(serializers.ModelSerializer):
         if photo_field and hasattr(photo_field, "url"):
             return (
                 request.build_absolute_uri(photo_field.url)
-                if request
-                else photo_field.url
+                if request else photo_field.url
             )
         return ""
 

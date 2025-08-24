@@ -54,7 +54,7 @@ class CustomUserAdmin(BaseUserAdmin):
 @admin.register(Vehicle)
 class VehicleAdmin(admin.ModelAdmin):
     list_display = ("id", "plate_number")
-    search_fields = ("plate_number")
+    search_fields = (["plate_number"])
 
 
 @admin.register(ExceptionalTransports)

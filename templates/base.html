@@ -125,10 +125,7 @@
                 <li class="nav-item">
                     <a class="nav-link" href="{% url 'exceptional-transports' %}">Maxsus Mashinalar</a>
                 </li>
-                <li class="nav-item admin-only">
-                    <a class="nav-link" href="{% url 'users' %}">Foydalanuvchilar</a>
-                </li>
-                <li class="nav-item admin-only">
+                <li class="nav-item">
                     <a class="nav-link" href="{% url 'report' %}">Hisobotlar</a>
                 </li>
             </ul>
@@ -182,11 +179,6 @@
         const exemptPages = ['/login/', '/register/']
         if (!token && !exemptPages.includes(currentPage)) {
             window.location.href = '/login/'
-        }
-
-        const userRole = localStorage.getItem('role')
-        if (userRole !== 'admin') {
-            document.querySelectorAll('.admin-only').forEach((el) => (el.style.display = 'none'))
         }
 
         const username = localStorage.getItem('username')
